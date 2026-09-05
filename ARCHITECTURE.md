@@ -74,8 +74,9 @@ maison/
 │   ├── layout/theme.liquid
 │   ├── assets/
 │   │   ├── base.css           tokens + composants : la DA vit ici
-│   │   ├── fonts.css          polices auto-hébergées
-│   │   └── theme.js           ~8 Ko, Web Components natifs
+│   │   ├── fonts.css          déclarations @font-face
+│   │   ├── *.woff2            Instrument Serif (regulier + italique), Jost
+│   │   └── theme.js           Web Components natifs, ~5 Ko compressé
 │   ├── snippets/
 │   │   ├── media.liquid       LE chemin unique d'affichage d'image
 │   │   ├── carte-produit.liquid
@@ -83,12 +84,16 @@ maison/
 │   │   ├── reglages-css.liquid
 │   │   └── meta-tags.liquid   Open Graph + JSON-LD
 │   ├── sections/
-│   │   ├── entete.liquid  hero.liquid  univers.liquid  nouveautes.liquid
+│   │   ├── entete.liquid      nav, recherche prédictive, tiroir de panier
+│   │   ├── hero.liquid  univers.liquid  nouveautes.liquid
 │   │   ├── main-collection.liquid   (page univers)
 │   │   ├── main-product.liquid      (fiche)
+│   │   ├── main-search.liquid       (résultats /search)
+│   │   ├── main-blog.liquid  main-article.liquid   (le journal)
 │   │   ├── main-cart.liquid  main-page.liquid  pied.liquid
 │   │   └── entete-groupe.json  pied-groupe.json
-│   ├── templates/             index / collection / product / page / cart / 404
+│   ├── templates/             index / collection / product / page / cart /
+│   │                          search / blog / article / 404
 │   ├── config/                settings_schema.json  settings_data.json
 │   └── locales/               fr.default.json  en.json
 ├── ops/                       pipeline catalogue (Node 20, zéro dépendance)
@@ -234,7 +239,7 @@ parsing dans un job qui a le droit d'écrire dans le catalogue). Le JSON est
 diffable en PR, ce qui rend la relecture éditoriale possible avant toute
 écriture.
 
-L'admin Shopify reste la source de vérité pour ce qui est **opérationnel** -
+L'admin Shopify reste la source de vérité pour ce qui est **opérationnel** :
 stock, commandes, prix promotionnels ponctuels. Le dépôt est la source de
 vérité pour ce qui est **éditorial** : titres, textes, métachamps, visuels,
 rattachement aux univers. Cette frontière est explicite parce que la confondre
@@ -492,37 +497,44 @@ JSON-LD `Product` et `Organization`, `canonical` sur toutes les pages.
   doublons de handle/SKU détectés).
 - Trois workflows CI avec séparation lecture / écriture et points de contrôle
   humains.
+- Les trois `.woff2` (Instrument Serif régulière, Instrument Serif italique,
+  Jost variable) sont déposés dans `theme/assets/`, sous licence SIL OFL.
+- **Recherche prédictive** dans l'en-tête : tiroir qui interroge
+  `/search/suggest.json` avec un anti-rebond, plus la page `/search`
+  complète (`main-search.liquid`) qui sert de repli sans JavaScript et de
+  page indexable par les moteurs.
+- **Tiroir de panier** : rendu côté serveur avec le reste de l'en-tête (le
+  panier est un objet Liquid disponible sur toutes les pages), mis à jour
+  par `/cart/change.js` sans quitter la page. L'ajout au panier depuis une
+  fiche produit rouvre le tiroir automatiquement.
+- **Le journal** : liste (`main-blog.liquid`) et article
+  (`main-article.liquid`), commentaires inclus si l'admin les active.
 
 **Reste à faire : dans l'ordre**
-1. **Déposer les deux `.woff2`** dans `theme/assets/` (Instrument Serif,
-   Jost variable). Sans eux, le thème tombe sur les repli métriques.
-2. **Créer les trois collections univers** (`table-et-lumiere`,
+1. **Créer les trois collections univers** (`table-et-lumiere`,
    `terre-et-gres`, `nuit-et-laiton`) et lancer
    `npm run metachamps -- --appliquer`.
-3. **Le journal** (blog) : présent dans la navigation du comp, pas encore
-   maquetté. Gabarits `blog.json` / `article.json` à écrire.
-4. **Recherche prédictive** et **tiroir de panier** : le comp montre un lien
-   « Recherche » et « Panier (0) », sans écran dédié. Actuellement des pages
-   pleines, ce qui fonctionne mais n'est pas ce que la version finale voudra.
-5. **Ordre des sections de l'accueil** : le comp fait suivre le hero de
+2. **Ordre des sections de l'accueil** : le comp fait suivre le hero de
    « Nouveautés » puis des univers, mais la maquette ne tranche pas nettement
    entre les deux. `index.json` place les univers avant les nouveautés ; c'est
    réordonnable en deux clics dans l'éditeur, à valider au design.
-6. **Habillage du checkout** dans les réglages de marque de l'admin.
-7. **Pages légales** à rédiger (mentions, CGV, rétractation, médiateur).
-8. **Lighthouse CI** à brancher sur le thème d'aperçu.
+3. **Habillage du checkout** dans les réglages de marque de l'admin.
+4. **Pages légales** à rédiger (mentions, CGV, rétractation, médiateur) avec
+   les informations réelles de l'entreprise (SIRET, adresse, hébergeur) :
+   ce document ne les invente pas, elles doivent venir du client.
+5. **Lighthouse CI** à brancher sur le thème d'aperçu.
 
 ---
 
 ## 11. Runbook
 
 ```bash
-# : Thème -
+# Thème
 shopify theme dev --path theme --store maison-dev.myshopify.com
 shopify theme check --path theme
 node tools/verifier-theme.mjs        # parité FR/EN, snippets, sections
 
-# : Catalogue, en local (jeton dans ops/.env) -
+# Catalogue, en local (jeton dans ops/.env)
 cd ops
 npm run valider                      # conformité DA, hors ligne
 npm run metachamps                   # simulation des définitions
@@ -535,7 +547,7 @@ npm run finaliser:reel               # univers + traductions EN
 npm run publier                      # contrôle final, simulation
 npm run publier:reel                 # bascule le lot en ligne
 
-# : Un lot complet jusqu'au DRAFT, en une commande -
+# Un lot complet jusqu'au DRAFT, en une commande
 npm run lot
 ```
 

@@ -83,5 +83,45 @@
     "titre": "This page no longer exists.",
     "texte": "The piece may have left the catalogue, or the address has changed.",
     "retour": "Back to home"
+  },
+  "journal": {
+    "surtitre": "The journal",
+    "lire": "Read",
+    "retour": "Back to the journal",
+    "aucun_article": "No article published yet.",
+    "publie_le": "Published on {{ date }}",
+    "par": "By {{ auteur }}",
+    "temps_lecture": "{{ minutes }} min read"
+  },
+  "recherche": {
+    "titre": "Search",
+    "placeholder": "Search for a piece, a collection…",
+    "lancer": "Run search",
+    "fermer": "Close search",
+    "resultats_pour": "Results for \"{{ terme }}\"",
+    "aucun_resultat": "No results for \"{{ terme }}\".",
+    "suggestions": "Suggestions",
+    "voir_tous_les_resultats": "View all results"
+  },
+  "tiroir_panier": {
+    "titre": "Your cart",
+    "fermer": "Close cart",
+    "voir_panier": "View cart",
+    "commander": "Check out"
+  },
+  "blogs": {
+    "comments": {
+      "title": {
+        "zero": "Comments",
+        "one": "{{ count }} comment",
+        "other": "{{ count }} comments"
+      },
+      "name": "Name",
+      "email": "Email",
+      "message": "Comment",
+      "post": "Post comment",
+      "success": "Your comment has been posted.",
+      "success_moderated": "Your comment has been saved and will appear once approved."
+    }
   }
 }

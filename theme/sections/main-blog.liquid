@@ -1,0 +1,86 @@
+{%- comment -%}
+  sections/main-blog.liquid : liste des articles du journal.
+
+  Meme grille et meme carte que le reste du site (media.liquid, ratio 4:3
+  puisque les photos de journal sont editoriales, pas des photos produit).
+  Aucune donnee editoriale nouvelle : titre, extrait et image viennent des
+  champs natifs de l'article Shopify.
+{%- endcomment -%}
+
+<section class="journal" data-section="{{ section.id }}">
+  <div class="enveloppe journal__entete">
+    <p class="mono">{{ 'journal.surtitre' | t }}</p>
+    <h1 class="titre-1">{{ blog.title }}</h1>
+  </div>
+
+  <div class="enveloppe">
+    {%- paginate blog.articles by section.settings.par_page -%}
+      {%- if blog.articles.size > 0 -%}
+        <div class="grille-3 journal__grille">
+          {%- for article in blog.articles -%}
+            <article class="journal__carte">
+              <a class="journal__lien" href="{{ article.url }}">
+                {%- render 'media',
+                  image: article.image,
+                  ratio: '4-3',
+                  brief: 'plan large editorial, ambiance du journal',
+                  sizes: '(min-width: 990px) 30vw, (min-width: 640px) 45vw, 90vw'
+                -%}
+                <p class="mono journal__date">{{ article.published_at | date: format: 'date' }}</p>
+                <h2 class="titre-4">{{ article.title }}</h2>
+                {%- if article.excerpt != blank -%}
+                  <p class="corps--s journal__extrait">{{ article.excerpt | strip_html | truncate: 140 }}</p>
+                {%- else -%}
+                  <p class="corps--s journal__extrait">{{ article.content | strip_html | truncate: 140 }}</p>
+                {%- endif -%}
+                <span class="label label--nav journal__cta">{{ 'journal.lire' | t }}</span>
+              </a>
+            </article>
+          {%- endfor -%}
+        </div>
+
+        {%- if paginate.pages > 1 -%}
+          <nav class="pagination label label--nav" aria-label="{{ 'collection.pagination' | t }}">
+            {%- if paginate.previous -%}
+              <a class="lien-filet" href="{{ paginate.previous.url }}">{{ 'collection.precedent' | t }}</a>
+            {%- endif -%}
+            <span class="mono">{{ 'collection.page_sur' | t: courante: paginate.current_page, total: paginate.pages }}</span>
+            {%- if paginate.next -%}
+              <a class="lien-filet" href="{{ paginate.next.url }}">{{ 'collection.suivant' | t }}</a>
+            {%- endif -%}
+          </nav>
+        {%- endif -%}
+      {%- else -%}
+        <p class="corps journal__vide">{{ 'journal.aucun_article' | t }}</p>
+      {%- endif -%}
+    {%- endpaginate -%}
+  </div>
+</section>
+
+{% stylesheet %}
+  .journal__entete {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-2);
+    padding-block: clamp(40px, 5.4vw, 78px) clamp(40px, 4.7vw, 68px);
+    border-bottom: 1px solid var(--filet);
+    margin-bottom: var(--e-8);
+  }
+  .journal__grille { padding-bottom: clamp(56px, 6vw, 92px); }
+  .journal__lien { display: flex; flex-direction: column; gap: var(--e-3); }
+  .journal__lien .media { transition: transform 640ms var(--courbe); }
+  .journal__lien:hover .media { transform: scale(1.015); }
+  .journal__date { margin-top: var(--e-2); }
+  .journal__extrait { max-width: 40ch; }
+  .journal__cta { color: var(--accent); margin-top: var(--e-1); }
+  .journal__vide { padding-block: var(--e-12); text-align: center; }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Journal",
+  "settings": [
+    { "type": "range", "id": "par_page", "min": 3, "max": 24, "step": 3, "default": 9, "label": "Articles par page" }
+  ]
+}
+{% endschema %}

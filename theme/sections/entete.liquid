@@ -62,9 +62,13 @@
         </form>
       {%- endif -%}
 
-      <a class="lien-filet" href="{{ routes.search_url }}">{{ 'general.recherche' | t }}</a>
+      {%- comment -%}
+        Lien reel vers /search : sans JS, la recherche fonctionne quand meme.
+        Le composant intercepte le clic pour ouvrir le tiroir a la place.
+      {%- endcomment -%}
+      <a class="lien-filet" href="{{ routes.search_url }}" data-ouvrir-recherche>{{ 'general.recherche' | t }}</a>
 
-      <a class="lien-filet" href="{{ routes.cart_url }}">
+      <a class="lien-filet" href="{{ routes.cart_url }}" data-ouvrir-panier>
         {{ 'general.panier' | t }} (<span data-compteur-panier>{{ cart.item_count }}</span>)
       </a>
     </div>
@@ -86,12 +90,137 @@
           {%- endfor -%}
         </ul>
         <div class="entete__panneau-pied label label--nav">
-          <a href="{{ routes.search_url }}">{{ 'general.recherche' | t }}</a>
-          <a href="{{ routes.cart_url }}">{{ 'general.panier' | t }} ({{ cart.item_count }})</a>
+          <a href="{{ routes.search_url }}" data-ouvrir-recherche>{{ 'general.recherche' | t }}</a>
+          <a href="{{ routes.cart_url }}" data-ouvrir-panier>{{ 'general.panier' | t }} ({{ cart.item_count }})</a>
         </div>
       </div>
     </nav-mobile>
   </div>
+
+  {%- comment -%}
+    Un seul tiroir, ouvert par n'importe quel [data-ouvrir-recherche] du
+    document (desktop et mobile). Vide au chargement : rien n'est envoye
+    a Shopify tant que le visiteur n'a pas ouvert la recherche.
+  {%- endcomment -%}
+  <recherche-predictive
+    class="entete__recherche"
+    hidden
+    data-url-suggestions="{{ routes.predictive_search_url }}"
+    data-url-recherche="{{ routes.search_url }}"
+    data-libelle-produits="{{ 'recherche.suggestions' | t }}"
+    data-libelle-vide="{{ 'recherche.aucun_resultat' | t: terme: '%s' }}"
+    data-libelle-voir-tout="{{ 'recherche.voir_tous_les_resultats' | t }}"
+  >
+    <div class="entete__recherche-voile" data-fermer-recherche></div>
+    <div class="entete__recherche-panneau" role="search">
+      <form action="{{ routes.search_url }}" method="get" class="entete__recherche-form">
+        <input
+          type="search"
+          name="q"
+          class="entete__recherche-champ titre-4"
+          placeholder="{{ 'recherche.placeholder' | t }}"
+          autocomplete="off"
+          aria-label="{{ 'recherche.titre' | t }}"
+          data-champ-recherche
+        >
+        <button type="submit" class="entete__recherche-lancer label label--nav">
+          {{ 'recherche.lancer' | t }}
+        </button>
+        <button
+          type="button"
+          class="entete__recherche-fermer"
+          data-fermer-recherche
+          aria-label="{{ 'recherche.fermer' | t }}"
+        >&times;</button>
+      </form>
+      <div class="entete__recherche-resultats" data-resultats-recherche aria-live="polite"></div>
+    </div>
+  </recherche-predictive>
+
+  {%- comment -%}
+    Tiroir de panier. Rendu cote serveur a chaque chargement de page (le
+    panier est un objet global Liquid, disponible partout, pas seulement
+    sur /cart) : le tiroir est donc correct au premier affichage, sans
+    appel reseau. formulaire-panier redemande deja la section "entete"
+    apres un ajout au panier, donc ce tiroir se met a jour tout seul quand
+    un produit est ajoute depuis une fiche.
+  {%- endcomment -%}
+  <panier-tiroir class="entete__panier" hidden data-libelle-erreur="{{ 'produit.erreur' | t }}">
+    <div class="entete__panier-voile" data-fermer-panier></div>
+    <div class="entete__panier-panneau" role="dialog" aria-label="{{ 'tiroir_panier.titre' | t }}">
+      <div class="entete__panier-entete">
+        <p class="titre-4">{{ 'tiroir_panier.titre' | t }}</p>
+        <button
+          type="button"
+          class="entete__panier-fermer"
+          data-fermer-panier
+          aria-label="{{ 'tiroir_panier.fermer' | t }}"
+        >&times;</button>
+      </div>
+
+      {%- if cart.item_count == 0 -%}
+        <div class="entete__panier-vide">
+          <p class="corps">{{ 'panier.vide' | t }}</p>
+          <a class="bouton bouton--ligne" href="{{ routes.all_products_collection_url }}" data-fermer-panier>
+            {{ 'panier.continuer' | t }}
+          </a>
+        </div>
+      {%- else -%}
+        <ul class="entete__panier-lignes">
+          {%- for ligne in cart.items -%}
+            <li class="entete__panier-ligne filet-bas" data-ligne-panier="{{ forloop.index }}">
+              <a class="entete__panier-ligne-media" href="{{ ligne.url }}" tabindex="-1" aria-hidden="true">
+                {%- render 'media', image: ligne.image, ratio: '4-5', sizes: '80px' -%}
+              </a>
+              <div class="entete__panier-ligne-infos">
+                <a class="carte__titre" href="{{ ligne.url }}">{{ ligne.product.title }}</a>
+                {%- unless ligne.variant.title contains 'Default' -%}
+                  <p class="mono--s">{{ ligne.variant.title }}</p>
+                {%- endunless -%}
+                <div class="entete__panier-ligne-bas">
+                  <selecteur-quantite class="quantite quantite--s" data-quantite-panier data-index="{{ forloop.index }}">
+                    <button type="button" data-pas="-1" aria-label="{{ 'produit.diminuer' | t }}">&minus;</button>
+                    <input
+                      type="number"
+                      value="{{ ligne.quantity }}"
+                      min="0"
+                      inputmode="numeric"
+                      aria-label="{{ 'produit.quantite' | t }}"
+                    >
+                    <button type="button" data-pas="1" aria-label="{{ 'produit.augmenter' | t }}">+</button>
+                  </selecteur-quantite>
+                  <p class="entete__panier-ligne-prix">{{ ligne.final_line_price | money }}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                class="entete__panier-retirer mono--s"
+                data-retirer-panier
+                data-index="{{ forloop.index }}"
+                aria-label="{{ 'panier.retirer' | t: titre: ligne.product.title }}"
+              >{{ 'panier.retirer_court' | t }}</button>
+            </li>
+          {%- endfor -%}
+        </ul>
+
+        <div class="entete__panier-pied">
+          <div class="entete__panier-total">
+            <span class="label label--nav">{{ 'panier.sous_total' | t }}</span>
+            <span class="produit__prix">{{ cart.total_price | money }}</span>
+          </div>
+          <p class="mono--s entete__panier-mention">{{ 'panier.taxes_livraison' | t }}</p>
+          <div class="entete__panier-actions">
+            <a class="bouton bouton--ligne" href="{{ routes.cart_url }}" data-fermer-panier>
+              {{ 'tiroir_panier.voir_panier' | t }}
+            </a>
+            <a class="bouton bouton--plein" href="{{ routes.cart_url }}/checkout">
+              {{ 'tiroir_panier.commander' | t }}
+            </a>
+          </div>
+        </div>
+      {%- endif -%}
+    </div>
+  </panier-tiroir>
 </header>
 
 {% stylesheet %}
@@ -149,6 +278,122 @@
     }
     .entete__panneau-liste { display: flex; flex-direction: column; gap: var(--e-6); }
     .entete__panneau-pied { display: flex; gap: var(--e-6); border-top: 1px solid var(--filet); padding-top: var(--e-6); }
+  }
+
+  /* ---------- Recherche predictive ---------- */
+  .entete__recherche { position: fixed; inset: 0; z-index: 100; }
+  .entete__recherche[hidden] { display: none; }
+  .entete__recherche-voile {
+    position: absolute;
+    inset: 0;
+    background: rgba(26, 21, 18, .44);
+  }
+  .entete__recherche-panneau {
+    position: relative;
+    background: var(--fond);
+    border-bottom: 1px solid var(--filet);
+    padding: clamp(28px, 4vw, 56px) var(--gouttiere);
+    max-height: 82vh;
+    overflow-y: auto;
+  }
+  .entete__recherche-form {
+    display: flex;
+    align-items: baseline;
+    gap: var(--e-6);
+    max-width: var(--largeur-max);
+    margin-inline: auto;
+    border-bottom: 1px solid var(--filet-fort);
+    padding-bottom: var(--e-5);
+  }
+  .entete__recherche-champ {
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: 0;
+    color: var(--texte);
+  }
+  .entete__recherche-champ::placeholder { color: var(--texte-tenu); }
+  .entete__recherche-champ::-webkit-search-cancel-button { display: none; }
+  .entete__recherche-lancer { color: var(--accent); white-space: nowrap; }
+  .entete__recherche-fermer {
+    font-size: 22px;
+    line-height: 1;
+    color: var(--texte-tenu);
+  }
+  .entete__recherche-fermer:hover { color: var(--texte); }
+  .entete__recherche-resultats { max-width: var(--largeur-max); margin-inline: auto; }
+  .rp-groupe { padding-top: var(--e-8); }
+  .rp-groupe__titre { color: var(--texte-tenu); margin-bottom: var(--e-5); }
+  .rp-produits { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--e-7) var(--e-6); }
+  .rp-produit { display: flex; flex-direction: column; gap: var(--e-2); }
+  .rp-produit__titre { font: 400 13px var(--f-sans); }
+  .rp-produit__prix { font: 300 12.5px var(--f-sans); color: var(--texte-doux); }
+  .rp-liens { display: flex; flex-direction: column; gap: var(--e-3); }
+  .rp-vide { color: var(--texte-tenu); padding-block: var(--e-8); text-align: center; }
+  .rp-voir-tout { display: inline-block; margin-top: var(--e-7); }
+
+  @media (max-width: 989px) {
+    .rp-produits { grid-template-columns: repeat(2, 1fr); }
+    .entete__recherche-form { align-items: center; }
+  }
+
+  /* ---------- Tiroir de panier ---------- */
+  .entete__panier { position: fixed; inset: 0; z-index: 100; }
+  .entete__panier[hidden] { display: none; }
+  .entete__panier-voile { position: absolute; inset: 0; background: rgba(26, 21, 18, .44); }
+  .entete__panier-panneau {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-end: 0;
+    width: min(420px, 92vw);
+    display: flex;
+    flex-direction: column;
+    background: var(--fond);
+    box-shadow: -12px 0 34px rgba(26, 21, 18, .16);
+  }
+  .entete__panier-entete {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--e-6) var(--e-7);
+    border-bottom: 1px solid var(--filet);
+  }
+  .entete__panier-fermer { font-size: 22px; line-height: 1; color: var(--texte-tenu); }
+  .entete__panier-fermer:hover { color: var(--texte); }
+  .entete__panier-vide {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--e-6);
+    padding: var(--e-8) var(--e-7);
+  }
+  .entete__panier-lignes { flex: 1; overflow-y: auto; padding: 0 var(--e-7); }
+  .entete__panier-ligne {
+    display: grid;
+    grid-template-columns: 64px 1fr auto;
+    gap: var(--e-4);
+    align-items: start;
+    padding-block: var(--e-6);
+  }
+  .entete__panier-ligne-media { width: 64px; }
+  .entete__panier-ligne-infos { display: flex; flex-direction: column; gap: var(--e-2); min-width: 0; }
+  .entete__panier-ligne-bas { display: flex; align-items: center; justify-content: space-between; gap: var(--e-3); margin-top: var(--e-2); }
+  .entete__panier-ligne-prix { font-size: 13px; color: var(--texte-doux); }
+  .entete__panier-retirer { color: var(--texte-tenu); }
+  .entete__panier-retirer:hover { color: var(--accent); }
+  .quantite--s button { width: 22px; height: 34px; }
+  .quantite--s input { width: 26px; height: 34px; }
+  .entete__panier-pied {
+    border-top: 1px solid var(--filet);
+    padding: var(--e-6) var(--e-7) var(--e-7);
+  }
+  .entete__panier-total { display: flex; align-items: baseline; justify-content: space-between; }
+  .entete__panier-mention { color: var(--texte-tenu); margin-top: var(--e-2); }
+  .entete__panier-actions { display: flex; gap: var(--e-3); margin-top: var(--e-6); }
+  .entete__panier-actions .bouton { flex: 1; }
+
+  @media (max-width: 480px) {
+    .entete__panier-panneau { width: 100%; }
   }
 {% endstylesheet %}
 

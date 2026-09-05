@@ -3,9 +3,10 @@
 Thème Shopify custom et pipeline catalogue, d'après la direction artistique
 **1a « Lumière rasante »** (art de la table & décoration, FR/EN).
 
-L'architecture complète : décisions, modèle de données, sécurité, pipeline -
+L'architecture complète (décisions, modèle de données, sécurité, pipeline)
 est dans **[ARCHITECTURE.md](ARCHITECTURE.md)**. Ce fichier ne donne que de
-quoi démarrer.
+quoi démarrer, et **[AGENTS.md](AGENTS.md)** est le point d'entrée pour un
+autre agent qui reprendrait le travail.
 
 ## Prérequis
 
@@ -20,10 +21,8 @@ quoi démarrer.
 shopify theme dev --path theme --store <boutique>.myshopify.com
 ```
 
-Avant la première session, déposer les deux polices dans `theme/assets/` :
-`InstrumentSerif-Regular.woff2` et `Jost-Variable.woff2` (SIL OFL, à récupérer
-depuis Google Fonts et convertir en woff2). Sans elles le thème s'affiche avec
-les repli métriques : lisible, mais ce n'est pas la DA.
+Les polices (Instrument Serif, Jost, SIL OFL) sont déjà dans `theme/assets/`,
+rien à télécharger.
 
 ## Démarrer sur le catalogue
 

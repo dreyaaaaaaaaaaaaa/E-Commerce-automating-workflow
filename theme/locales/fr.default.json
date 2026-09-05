@@ -83,5 +83,45 @@
     "titre": "Cette page n'existe plus.",
     "texte": "La pièce a peut-être quitté le catalogue, ou l'adresse a changé.",
     "retour": "Retour à l'accueil"
+  },
+  "journal": {
+    "surtitre": "Le journal",
+    "lire": "Lire",
+    "retour": "Retour au journal",
+    "aucun_article": "Aucun article publié pour le moment.",
+    "publie_le": "Publié le {{ date }}",
+    "par": "Par {{ auteur }}",
+    "temps_lecture": "{{ minutes }} min de lecture"
+  },
+  "recherche": {
+    "titre": "Recherche",
+    "placeholder": "Rechercher une pièce, un univers…",
+    "lancer": "Lancer la recherche",
+    "fermer": "Fermer la recherche",
+    "resultats_pour": "Résultats pour « {{ terme }} »",
+    "aucun_resultat": "Aucun résultat pour « {{ terme }} ».",
+    "suggestions": "Suggestions",
+    "voir_tous_les_resultats": "Voir tous les résultats"
+  },
+  "tiroir_panier": {
+    "titre": "Votre panier",
+    "fermer": "Fermer le panier",
+    "voir_panier": "Voir le panier",
+    "commander": "Commander"
+  },
+  "blogs": {
+    "comments": {
+      "title": {
+        "zero": "Commentaires",
+        "one": "{{ count }} commentaire",
+        "other": "{{ count }} commentaires"
+      },
+      "name": "Nom",
+      "email": "Adresse électronique",
+      "message": "Commentaire",
+      "post": "Publier le commentaire",
+      "success": "Votre commentaire a été publié.",
+      "success_moderated": "Votre commentaire a été enregistré et sera publié après relecture."
+    }
   }
 }

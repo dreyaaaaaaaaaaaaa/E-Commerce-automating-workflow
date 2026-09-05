@@ -1,9 +1,10 @@
 /* ============================================================
    MAISON : JS du thème
-   Contraintes : aucun framework, aucune dépendance externe,
-   budget ~8 Ko non compressé. Tout est en Web Components natifs
-   pour que le rendu de section (Section Rendering API) puisse
-   remplacer du HTML sans réinitialisation manuelle.
+   Contraintes : aucun framework, aucune dépendance externe. Tout est en
+   Web Components natifs pour que le rendu de section (Section Rendering
+   API) puisse remplacer du HTML sans réinitialisation manuelle : un
+   composant remplacé se réattache tout seul via connectedCallback.
+   Budget : moins de 15 Ko compressé (voir ARCHITECTURE.md section 9).
    ============================================================ */
 (() => {
   'use strict';
@@ -16,6 +17,21 @@
     const zone = document.getElementById('annonce-live');
     if (zone) zone.textContent = message;
   };
+
+  /* Remplace une section par sa version fraiche, rendue cote serveur.
+     Partagee par l'ajout au panier et le tiroir de panier : c'est le meme
+     mecanisme, Shopify accepte le parametre `sections` sur /cart/add.js
+     comme sur /cart/change.js. */
+  function rafraichirSections(sections) {
+    if (!sections) return;
+    Object.entries(sections).forEach(([id, html]) => {
+      const source = new DOMParser()
+        .parseFromString(html, 'text/html')
+        .querySelector(`#shopify-section-${id}, [data-section="${id}"]`);
+      const cible = document.querySelector(`#shopify-section-${id}, [data-section="${id}"]`);
+      if (source && cible) cible.replaceWith(source);
+    });
+  }
 
   /* ---------- Ajout au panier ----------
      On poste vers /cart/add.js avec `sections` : Shopify renvoie
@@ -54,9 +70,12 @@
           annonce(resultat.description || resultat.message);
           this.afficherErreur(resultat.description || resultat.message);
         } else {
-          this.rafraichirSections(resultat.sections);
+          rafraichirSections(resultat.sections);
           annonce(this.dataset.libelleAjoute || 'Ajouté au panier');
           document.dispatchEvent(new CustomEvent('panier:modifie'));
+          // Le noeud <panier-tiroir> vient d'etre remplace par
+          // rafraichirSections : on rouvre le nouveau, pas l'ancien.
+          document.querySelector('panier-tiroir')?.ouvrir();
         }
       } catch {
         this.afficherErreur(this.dataset.libelleErreur || 'Une erreur est survenue.');
@@ -64,17 +83,6 @@
         this.bouton.removeAttribute('aria-disabled');
         this.bouton.textContent = this.bouton.dataset.libelleInitial;
       }
-    }
-
-    rafraichirSections(sections) {
-      if (!sections) return;
-      Object.entries(sections).forEach(([id, html]) => {
-        const source = new DOMParser()
-          .parseFromString(html, 'text/html')
-          .querySelector(`#shopify-section-${id}, [data-section="${id}"]`);
-        const cible = document.querySelector(`#shopify-section-${id}, [data-section="${id}"]`);
-        if (source && cible) cible.replaceWith(source);
-      });
     }
 
     afficherErreur(message) {
@@ -180,6 +188,256 @@
     }
   }
   customElements.define('nav-mobile', NavMobile);
+
+  /* ---------- Recherche predictive ----------
+     Un seul tiroir dans le document, ouvert par n'importe quel lien
+     [data-ouvrir-recherche] (desktop, mobile). Rien n'est envoye a Shopify
+     tant que le visiteur n'a pas tape : la premiere frappe suffit a
+     declencher l'appel a /search/suggest.json, avec un debounce pour ne
+     pas spammer l'API a chaque caractere. Sans JS, les liens gardent leur
+     href vers /search et fonctionnent normalement. */
+  class RecherchePredictive extends HTMLElement {
+    connectedCallback() {
+      this.champ = this.querySelector('[data-champ-recherche]');
+      this.zoneResultats = this.querySelector('[data-resultats-recherche]');
+      this.urlSuggestions = this.dataset.urlSuggestions;
+      this.urlRecherche = this.dataset.urlRecherche;
+      this.libelleVide = this.dataset.libelleVide;
+      this.libelleProduits = this.dataset.libelleProduits;
+      this.libelleVoirTout = this.dataset.libelleVoirTout;
+      this.controleur = null;
+      this.minuteur = null;
+
+      document.addEventListener('click', (e) => {
+        if (e.target.closest('[data-ouvrir-recherche]')) {
+          e.preventDefault();
+          this.ouvrir();
+        }
+      });
+      this.querySelectorAll('[data-fermer-recherche]').forEach((el) =>
+        el.addEventListener('click', () => this.fermer())
+      );
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !this.hidden) this.fermer();
+      });
+      this.champ?.addEventListener('input', () => this.planifier());
+    }
+
+    ouvrir() {
+      this.hidden = false;
+      document.documentElement.style.overflow = 'hidden';
+      this.champ?.focus();
+    }
+
+    fermer() {
+      this.hidden = true;
+      document.documentElement.style.overflow = '';
+    }
+
+    planifier() {
+      clearTimeout(this.minuteur);
+      const terme = this.champ.value.trim();
+      if (terme.length < 2) {
+        this.zoneResultats.replaceChildren();
+        return;
+      }
+      this.minuteur = setTimeout(() => this.chercher(terme), 220);
+    }
+
+    async chercher(terme) {
+      this.controleur?.abort();
+      this.controleur = new AbortController();
+
+      const url = `${this.urlSuggestions}?q=${encodeURIComponent(terme)}` +
+        '&resources[type]=product,collection,page' +
+        '&resources[limit]=6' +
+        '&resources[options][unavailable_products]=last';
+
+      let donnees;
+      try {
+        const reponse = await fetch(url, { signal: this.controleur.signal });
+        donnees = await reponse.json();
+      } catch (e) {
+        if (e.name === 'AbortError') return;
+        return;
+      }
+
+      this.afficher(donnees?.resources?.results, terme);
+    }
+
+    afficher(resultats, terme) {
+      this.zoneResultats.replaceChildren();
+      if (!resultats) return;
+
+      const produits = resultats.products || [];
+      const collections = resultats.collections || [];
+      const pages = resultats.pages || [];
+      const total = produits.length + collections.length + pages.length;
+
+      if (total === 0) {
+        const vide = document.createElement('p');
+        vide.className = 'rp-vide';
+        vide.textContent = (this.libelleVide || '%s').replace('%s', terme);
+        this.zoneResultats.append(vide);
+        return;
+      }
+
+      if (produits.length) {
+        const groupe = document.createElement('div');
+        groupe.className = 'rp-groupe';
+
+        const titre = document.createElement('p');
+        titre.className = 'label label--fin rp-groupe__titre';
+        titre.textContent = this.libelleProduits || '';
+        groupe.append(titre);
+
+        const grille = document.createElement('div');
+        grille.className = 'rp-produits';
+        for (const p of produits) grille.append(this.carteProduit(p));
+        groupe.append(grille);
+        this.zoneResultats.append(groupe);
+      }
+
+      if (collections.length || pages.length) {
+        const groupe = document.createElement('div');
+        groupe.className = 'rp-groupe rp-liens';
+        for (const c of [...collections, ...pages]) {
+          const a = document.createElement('a');
+          a.className = 'lien-filet';
+          a.href = c.url;
+          a.textContent = c.title;
+          groupe.append(a);
+        }
+        this.zoneResultats.append(groupe);
+      }
+
+      const voirTout = document.createElement('a');
+      voirTout.className = 'label label--nav lien-filet rp-voir-tout';
+      voirTout.href = `${this.urlRecherche}?q=${encodeURIComponent(terme)}`;
+      voirTout.textContent = this.libelleVoirTout || '';
+      this.zoneResultats.append(voirTout);
+    }
+
+    carteProduit(p) {
+      const a = document.createElement('a');
+      a.className = 'rp-produit';
+      a.href = p.url;
+
+      if (p.image) {
+        const img = document.createElement('img');
+        img.src = p.image;
+        img.alt = '';
+        img.loading = 'lazy';
+        img.width = 200;
+        img.height = 250;
+        img.style.aspectRatio = '4 / 5';
+        img.style.objectFit = 'cover';
+        a.append(img);
+      }
+
+      const titre = document.createElement('span');
+      titre.className = 'rp-produit__titre';
+      titre.textContent = p.title;
+      a.append(titre);
+
+      if (p.price) {
+        const prix = document.createElement('span');
+        prix.className = 'rp-produit__prix';
+        prix.textContent = p.price;
+        a.append(prix);
+      }
+
+      return a;
+    }
+  }
+  customElements.define('recherche-predictive', RecherchePredictive);
+
+  /* ---------- Tiroir de panier ----------
+     Le contenu est rendu cote serveur au chargement de la page (le panier
+     est disponible partout en Liquid, pas seulement sur /cart). Le JS ne
+     fait que : ouvrir/fermer le tiroir, et poster les changements de
+     quantite vers /cart/change.js en redemandant la section "entete" pour
+     rester synchronise avec le serveur, jamais recalculer un prix ici. */
+  class PanierTiroir extends HTMLElement {
+    connectedCallback() {
+      this.enCours = false;
+
+      document.addEventListener('click', (e) => {
+        if (e.target.closest('[data-ouvrir-panier]')) {
+          e.preventDefault();
+          this.ouvrir();
+        }
+      });
+      // Pas de preventDefault ici : les liens "voir le panier" et
+      // "continuer mes achats" doivent naviguer normalement.
+      this.addEventListener('click', (e) => {
+        if (e.target.closest('[data-fermer-panier]')) this.fermer();
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !this.hidden) this.fermer();
+      });
+
+      this.addEventListener('click', (e) => {
+        const retirer = e.target.closest('[data-retirer-panier]');
+        if (retirer) this.changerQuantite(retirer.dataset.index, 0);
+      });
+
+      // selecteur-quantite gere deja le clic sur +/- et redispatch un
+      // 'change' sur l'input (bulle) : on n'a qu'a l'ecouter ici, pas
+      // besoin de dupliquer la logique de pas.
+      this.addEventListener('change', (e) => {
+        const champ = e.target.closest('[data-quantite-panier] input');
+        if (!champ) return;
+        const groupe = champ.closest('[data-quantite-panier]');
+        this.changerQuantite(groupe.dataset.index, champ.value);
+      });
+    }
+
+    ouvrir() {
+      this.hidden = false;
+      document.documentElement.style.overflow = 'hidden';
+    }
+
+    fermer() {
+      this.hidden = true;
+      document.documentElement.style.overflow = '';
+    }
+
+    async changerQuantite(ligne, quantite) {
+      if (this.enCours) return;
+      this.enCours = true;
+      this.setAttribute('aria-busy', 'true');
+
+      try {
+        const reponse = await fetch(config.routes.cart_change, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({
+            line: Number(ligne),
+            quantity: Number(quantite),
+            sections: ['entete'],
+            sections_url: window.location.pathname,
+          }),
+        });
+        const resultat = await reponse.json();
+
+        if (resultat.status) {
+          annonce(resultat.description || resultat.message);
+          return;
+        }
+        rafraichirSections(resultat.sections);
+        document.dispatchEvent(new CustomEvent('panier:modifie'));
+        // Meme remplacement de noeud que pour l'ajout : le nouveau tiroir
+        // doit rester ouvert, l'ancien va disparaitre.
+        document.querySelector('panier-tiroir')?.ouvrir();
+      } catch {
+        annonce(this.dataset.libelleErreur || 'Une erreur est survenue.');
+      } finally {
+        this.enCours = false;
+      }
+    }
+  }
+  customElements.define('panier-tiroir', PanierTiroir);
 
   /* ---------- Consentement (Customer Privacy API de Shopify) ----------
      On ne charge aucun pixel tiers depuis le thème : les pixels passent

@@ -1,0 +1,114 @@
+{%- comment -%}
+  sections/main-article.liquid : article du journal.
+
+  Colonne de lecture etroite (meme largeur que main-page.liquid) pour rester
+  dans le rythme editorial de la DA. Image de tete en 4:3 quand elle existe.
+{%- endcomment -%}
+
+<article class="enveloppe article" data-section="{{ section.id }}">
+  <nav class="article__ariane mono--s" aria-label="{{ 'accessibilite.fil_ariane' | t }}">
+    <a class="lien-filet" href="{{ blog.url }}">{{ 'journal.retour' | t }}</a>
+  </nav>
+
+  <header class="article__entete">
+    <p class="mono">{{ article.published_at | date: format: 'date' }}</p>
+    <h1 class="titre-1">{{ article.title }}</h1>
+    {%- if article.author != blank or section.settings.afficher_temps_lecture -%}
+      <p class="corps--s article__meta">
+        {%- if article.author != blank -%}{{ 'journal.par' | t: auteur: article.author }}{%- endif -%}
+        {%- if article.author != blank and section.settings.afficher_temps_lecture %} &middot; {% endif -%}
+        {%- if section.settings.afficher_temps_lecture -%}
+          {%- assign mots = article.content | strip_html | split: ' ' | size -%}
+          {%- assign minutes = mots | divided_by: 200 | at_least: 1 -%}
+          {{ 'journal.temps_lecture' | t: minutes: minutes }}
+        {%- endif -%}
+      </p>
+    {%- endif -%}
+  </header>
+
+  {%- if article.image -%}
+    <div class="article__image">
+      {%- render 'media', image: article.image, ratio: '4-3', sizes: '100vw', priorite: true -%}
+    </div>
+  {%- endif -%}
+
+  <div class="page-contenu__rte article__corps">{{ article.content }}</div>
+
+  {%- if blog.comments_enabled? -%}
+    <div class="article__commentaires">
+      <h2 class="titre-4">{{ 'blogs.comments.title' | t: count: article.comments_count }}</h2>
+
+      {%- if article.comments_count > 0 -%}
+        <ul class="article__liste-commentaires">
+          {%- for comment in article.comments -%}
+            <li class="article__commentaire">
+              <p class="corps--s article__commentaire-corps">{{ comment.content }}</p>
+              <p class="mono--s">{{ comment.author }} &middot; {{ comment.created_at | date: format: 'date' }}</p>
+            </li>
+          {%- endfor -%}
+        </ul>
+      {%- endif -%}
+
+      {%- form 'new_comment', article -%}
+        {%- if form.posted_successfully? -%}
+          <p class="corps--s article__succes" role="status">
+            {%- if blog.moderated? -%}
+              {{ 'blogs.comments.success_moderated' | t }}
+            {%- else -%}
+              {{ 'blogs.comments.success' | t }}
+            {%- endif -%}
+          </p>
+        {%- endif -%}
+        {%- if form.errors -%}
+          <p class="corps--s article__erreur" role="alert">{{ form.errors | default_errors }}</p>
+        {%- endif -%}
+
+        <div class="article__champ">
+          <label class="label label--fin" for="commentaire-auteur">{{ 'blogs.comments.name' | t }}</label>
+          <input id="commentaire-auteur" type="text" name="comment[author]" value="{{ form.author }}" required>
+        </div>
+        <div class="article__champ">
+          <label class="label label--fin" for="commentaire-courriel">{{ 'blogs.comments.email' | t }}</label>
+          <input id="commentaire-courriel" type="email" name="comment[email]" value="{{ form.email }}" required>
+        </div>
+        <div class="article__champ">
+          <label class="label label--fin" for="commentaire-message">{{ 'blogs.comments.message' | t }}</label>
+          <textarea id="commentaire-message" name="comment[body]" rows="5" required>{{ form.body }}</textarea>
+        </div>
+        <button type="submit" class="bouton bouton--ligne">{{ 'blogs.comments.post' | t }}</button>
+      {%- endform -%}
+    </div>
+  {%- endif -%}
+</article>
+
+{% stylesheet %}
+  .article { padding-block: clamp(28px, 3vw, 44px) clamp(56px, 6vw, 92px); max-width: 78ch; }
+  .article__ariane { display: block; margin-bottom: var(--e-6); color: var(--texte-tenu); }
+  .article__entete { display: flex; flex-direction: column; gap: var(--e-3); margin-bottom: var(--e-8); }
+  .article__meta { color: var(--texte-tenu); }
+  .article__image { margin-bottom: var(--e-9); }
+  .article__corps { max-width: none; }
+  .article__commentaires { margin-top: clamp(56px, 6vw, 92px); padding-top: var(--e-8); border-top: 1px solid var(--filet); }
+  .article__liste-commentaires { display: flex; flex-direction: column; gap: var(--e-6); margin-bottom: var(--e-8); }
+  .article__commentaire { padding-bottom: var(--e-5); border-bottom: 1px solid var(--filet); }
+  .article__commentaire-corps { margin-bottom: var(--e-2); }
+  .article__champ { display: flex; flex-direction: column; gap: var(--e-2); margin-bottom: var(--e-5); }
+  .article__champ input, .article__champ textarea {
+    background: transparent;
+    border: 1px solid var(--filet-fort);
+    padding: 10px 12px;
+    font: 300 var(--t-corps-s)/1.6 var(--f-sans);
+    color: var(--texte);
+  }
+  .article__succes { color: var(--accent); margin-bottom: var(--e-5); }
+  .article__erreur { color: var(--c-alerte); margin-bottom: var(--e-5); }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Article",
+  "settings": [
+    { "type": "checkbox", "id": "afficher_temps_lecture", "default": true, "label": "Afficher le temps de lecture estime" }
+  ]
+}
+{% endschema %}

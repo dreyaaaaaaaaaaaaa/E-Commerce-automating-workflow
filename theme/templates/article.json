@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "main": {
+      "type": "main-article",
+      "settings": { "afficher_temps_lecture": true }
+    }
+  },
+  "order": ["main"]
+}

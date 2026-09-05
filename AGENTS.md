@@ -55,11 +55,20 @@ section ou une locale.
 ## Etat du projet
 
 Ce depot contient un theme fonctionnel pour les trois gabarits maquettes
-(accueil, page univers, fiche produit) plus panier, page de contenu, 404,
-en-tete et pied. Le pipeline catalogue est complet et teste (validation
-positive et negative). La section 10 de `ARCHITECTURE.md` liste precisement
-ce qui reste a faire, dans l'ordre de priorite. Commencer par la, plutot que
-de re-decouvrir l'etat d'avancement en lisant tout le code.
+(accueil, page univers, fiche produit), plus panier, journal (liste et
+article), recherche predictive, tiroir de panier, page de contenu, 404,
+en-tete et pied. Les polices sont deposees. Le pipeline catalogue est
+complet et teste (validation positive et negative). La section 10 de
+`ARCHITECTURE.md` liste precisement ce qui reste a faire, dans l'ordre de
+priorite. Commencer par la, plutot que de re-decouvrir l'etat d'avancement
+en lisant tout le code.
+
+Aucun de ces elements n'a ete verifie dans un navigateur reel ou contre une
+boutique Shopify live (pas d'acces a une boutique de developpement depuis
+cette session). Avant de considerer une fonctionnalite terminee, la tester
+avec `shopify theme dev` : theme check et le verificateur de coherence
+attrapent les erreurs structurelles, pas les erreurs de rendu ou de
+comportement au clic.
 
 ## Se reperer sans lire tout le depot
 

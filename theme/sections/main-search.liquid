@@ -1,0 +1,100 @@
+{%- comment -%}
+  sections/main-search.liquid : page de resultats /search.
+
+  C'est la version sans JavaScript de la recherche predictive de l'en-tete,
+  et celle que les moteurs de recherche indexent. Meme grille et meme carte
+  que le reste du catalogue.
+{%- endcomment -%}
+
+<section class="recherche-page" data-section="{{ section.id }}">
+  <div class="enveloppe recherche-page__entete">
+    <form action="{{ routes.search_url }}" method="get" role="search" class="recherche-page__form">
+      <label class="visuellement-cache" for="q-recherche">{{ 'recherche.titre' | t }}</label>
+      <input
+        id="q-recherche"
+        type="search"
+        name="q"
+        value="{{ search.terms | escape }}"
+        class="titre-2 recherche-page__champ"
+        placeholder="{{ 'recherche.placeholder' | t }}"
+        autocomplete="off"
+      >
+      <button type="submit" class="label label--nav recherche-page__lancer">{{ 'recherche.lancer' | t }}</button>
+    </form>
+
+    {%- if search.performed -%}
+      <p class="mono recherche-page__compte">
+        {%- if search.results_count > 0 -%}
+          {{ 'recherche.resultats_pour' | t: terme: search.terms }} ({{ search.results_count }})
+        {%- else -%}
+          {{ 'recherche.aucun_resultat' | t: terme: search.terms }}
+        {%- endif -%}
+      </p>
+    {%- endif -%}
+  </div>
+
+  {%- if search.performed and search.results_count > 0 -%}
+    <div class="enveloppe">
+      {%- paginate search.results by section.settings.par_page -%}
+        <div class="grille-3 recherche-page__grille">
+          {%- for item in search.results -%}
+            {%- if item.object_type == 'product' -%}
+              {%- render 'carte-produit',
+                produit: item,
+                sizes: '(min-width: 990px) 30vw, (min-width: 640px) 45vw, 90vw'
+              -%}
+            {%- else -%}
+              <a class="recherche-page__autre" href="{{ item.url }}">
+                {%- if item.object_type == 'article' or item.object_type == 'page' -%}
+                  {%- render 'media', image: item.image, ratio: '4-3', sizes: '30vw' -%}
+                {%- endif -%}
+                <span class="mono--s">{{ item.object_type | capitalize }}</span>
+                <span class="titre-4">{{ item.title }}</span>
+              </a>
+            {%- endif -%}
+          {%- endfor -%}
+        </div>
+
+        {%- if paginate.pages > 1 -%}
+          <nav class="pagination label label--nav" aria-label="{{ 'collection.pagination' | t }}">
+            {%- if paginate.previous -%}
+              <a class="lien-filet" href="{{ paginate.previous.url }}">{{ 'collection.precedent' | t }}</a>
+            {%- endif -%}
+            <span class="mono">{{ 'collection.page_sur' | t: courante: paginate.current_page, total: paginate.pages }}</span>
+            {%- if paginate.next -%}
+              <a class="lien-filet" href="{{ paginate.next.url }}">{{ 'collection.suivant' | t }}</a>
+            {%- endif -%}
+          </nav>
+        {%- endif -%}
+      {%- endpaginate -%}
+    </div>
+  {%- endif -%}
+</section>
+
+{% stylesheet %}
+  .recherche-page__entete {
+    padding-block: clamp(40px, 5.4vw, 78px) clamp(28px, 3vw, 44px);
+  }
+  .recherche-page__form {
+    display: flex;
+    align-items: baseline;
+    gap: var(--e-6);
+    border-bottom: 1px solid var(--filet-fort);
+    padding-bottom: var(--e-5);
+  }
+  .recherche-page__champ { flex: 1; min-width: 0; background: transparent; border: 0; color: var(--texte); }
+  .recherche-page__champ::placeholder { color: var(--texte-tenu); }
+  .recherche-page__lancer { color: var(--accent); white-space: nowrap; }
+  .recherche-page__compte { margin-top: var(--e-5); color: var(--texte-tenu); }
+  .recherche-page__grille { padding-bottom: clamp(56px, 6vw, 92px); }
+  .recherche-page__autre { display: flex; flex-direction: column; gap: var(--e-2); }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Resultats de recherche",
+  "settings": [
+    { "type": "range", "id": "par_page", "min": 6, "max": 36, "step": 3, "default": 12, "label": "Resultats par page" }
+  ]
+}
+{% endschema %}
