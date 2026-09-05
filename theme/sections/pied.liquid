@@ -29,8 +29,18 @@
           <div class="pied__colonne pied__colonne--large" {{ bloc.shopify_attributes }}>
             <p class="mono pied__titre-colonne">{{ bloc.settings.titre | escape }}</p>
             <p class="corps--s">{{ bloc.settings.texte | escape }}</p>
+            {%- comment -%}
+              contact[accepts_marketing] est le champ reel de consentement
+              marketing Shopify : sans lui, l'inscrit n'apparait pas comme
+              abonne (email_marketing_consent) et ne peut pas etre cible
+              par Shopify Email ou un outil synchronise. Le tag seul
+              n'etait qu'une etiquette, aucun consentement reel derriere.
+              Shopify applique lui-meme le double opt-in la ou il est
+              exige (marche UE notamment).
+            {%- endcomment -%}
             {%- form 'customer', class: 'pied__form' -%}
               <input type="hidden" name="contact[tags]" value="infolettre">
+              <input type="hidden" name="contact[accepts_marketing]" value="true">
               <label class="visuellement-cache" for="courriel-infolettre">
                 {{ 'infolettre.courriel' | t }}
               </label>

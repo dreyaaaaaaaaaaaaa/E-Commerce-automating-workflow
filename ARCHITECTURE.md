@@ -538,6 +538,20 @@ JSON-LD `Product` et `Organization`, `canonical` sur toutes les pages.
   avertissement (un runner CI partagé n'a pas les conditions réseau du
   budget mobile 4G documenté en section 9, un score qui fluctue là-dessus
   ne doit pas faire échouer la PR pour de mauvaises raisons).
+- **Pastilles couleur rondes** sur la fiche produit et les cartes de
+  grille (`couleur-swatch.liquid`), corrigées après comparaison avec des
+  captures du comp original : c'était des étiquettes texte, hors DA.
+- **Consentement marketing réel** sur le formulaire d'infolettre
+  (`contact[accepts_marketing]`) : le tag seul n'abonnait personne côté
+  Shopify, ce champ déclenche le vrai statut d'abonné et le double
+  opt-in là où le marché l'exige.
+- **Suivi de colis** sur la page commande (`order.fulfillments`) :
+  affiche le lien de suivi dès qu'un envoi est expédié. Plus important
+  ici que sur une boutique à stock local : en dropshipping le délai est
+  plus long et plus variable, c'est la première inquiétude du client.
+- **Sélecteur de marché / devise** dans l'en-tête (desktop et mobile),
+  même mécanisme que le sélecteur de langue (`/localization` natif).
+  N'apparaît que si plusieurs marchés Shopify sont configurés.
 
 **Reste à faire : dans l'ordre**
 1. **Créer les trois collections univers** (`table-et-lumiere`,

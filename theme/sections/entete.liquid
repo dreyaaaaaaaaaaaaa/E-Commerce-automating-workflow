@@ -63,6 +63,36 @@
       {%- endif -%}
 
       {%- comment -%}
+        Marche/devise : meme mecanisme que la langue (formulaire natif
+        /localization), champ different. N'apparait que si plusieurs
+        marches Shopify sont configures ; sur une boutique a marche
+        unique, rien a afficher, rien de casse.
+      {%- endcomment -%}
+      {%- if section.settings.selecteur_marche and localization.available_countries.size > 1 -%}
+        <form method="post" action="{{ routes.root_url }}localization" class="entete__marche">
+          <input type="hidden" name="form_type" value="localization">
+          <input type="hidden" name="_method" value="put">
+          <input type="hidden" name="return_to" value="{{ request.path }}">
+          <label class="visuellement-cache" for="pays-{{ section.id }}">
+            {{ 'accessibilite.choisir_marche' | t }}
+          </label>
+          <select
+            id="pays-{{ section.id }}"
+            name="country_code"
+            class="entete__marche-champ"
+            onchange="this.form.submit()"
+          >
+            {%- for pays in localization.available_countries -%}
+              <option
+                value="{{ pays.iso_code }}"
+                {% if pays.iso_code == localization.country.iso_code %}selected{% endif %}
+              >{{ pays.name }} ({{ pays.currency.iso_code }})</option>
+            {%- endfor -%}
+          </select>
+        </form>
+      {%- endif -%}
+
+      {%- comment -%}
         Lien reel vers /search : sans JS, la recherche fonctionne quand meme.
         Le composant intercepte le clic pour ouvrir le tiroir a la place.
       {%- endcomment -%}
@@ -100,6 +130,46 @@
           </a>
           <a href="{{ routes.cart_url }}" data-ouvrir-panier>{{ 'general.panier' | t }} ({{ cart.item_count }})</a>
         </div>
+
+        {%- if section.settings.selecteur_langue and localization.available_languages.size > 1 or section.settings.selecteur_marche and localization.available_countries.size > 1 -%}
+          <div class="entete__panneau-localisation">
+            {%- if section.settings.selecteur_langue and localization.available_languages.size > 1 -%}
+              <form method="post" action="{{ routes.root_url }}localization" class="entete__panneau-loc-form">
+                <input type="hidden" name="form_type" value="localization">
+                <input type="hidden" name="_method" value="put">
+                <input type="hidden" name="return_to" value="{{ request.path }}">
+                <label class="visuellement-cache" for="langue-mobile-{{ section.id }}">
+                  {{ 'accessibilite.choisir_langue' | t }}
+                </label>
+                <select id="langue-mobile-{{ section.id }}" name="locale_code" class="entete__marche-champ" onchange="this.form.submit()">
+                  {%- for langue in localization.available_languages -%}
+                    <option value="{{ langue.iso_code }}" {% if langue.iso_code == localization.language.iso_code %}selected{% endif %}>
+                      {{ langue.endonym_name | capitalize }}
+                    </option>
+                  {%- endfor -%}
+                </select>
+              </form>
+            {%- endif -%}
+
+            {%- if section.settings.selecteur_marche and localization.available_countries.size > 1 -%}
+              <form method="post" action="{{ routes.root_url }}localization" class="entete__panneau-loc-form">
+                <input type="hidden" name="form_type" value="localization">
+                <input type="hidden" name="_method" value="put">
+                <input type="hidden" name="return_to" value="{{ request.path }}">
+                <label class="visuellement-cache" for="pays-mobile-{{ section.id }}">
+                  {{ 'accessibilite.choisir_marche' | t }}
+                </label>
+                <select id="pays-mobile-{{ section.id }}" name="country_code" class="entete__marche-champ" onchange="this.form.submit()">
+                  {%- for pays in localization.available_countries -%}
+                    <option value="{{ pays.iso_code }}" {% if pays.iso_code == localization.country.iso_code %}selected{% endif %}>
+                      {{ pays.name }} ({{ pays.currency.iso_code }})
+                    </option>
+                  {%- endfor -%}
+                </select>
+              </form>
+            {%- endif -%}
+          </div>
+        {%- endif -%}
       </div>
     </nav-mobile>
   </div>
@@ -265,6 +335,17 @@
   .entete__langues { display: flex; align-items: center; gap: var(--e-1); }
   .entete__langue { letter-spacing: inherit; text-transform: inherit; color: var(--texte-tenu); }
   .entete__langue.est-actif { color: var(--texte); }
+  .entete__marche { display: flex; align-items: center; }
+  .entete__marche-champ {
+    background: transparent;
+    border: 0;
+    color: var(--texte-tenu);
+    letter-spacing: inherit;
+    text-transform: inherit;
+    font-size: inherit;
+    cursor: pointer;
+  }
+  .entete__marche-champ:hover { color: var(--texte); }
   .entete__mobile { display: none; }
 
   @media (max-width: 989px) {
@@ -285,6 +366,19 @@
     }
     .entete__panneau-liste { display: flex; flex-direction: column; gap: var(--e-6); }
     .entete__panneau-pied { display: flex; gap: var(--e-6); border-top: 1px solid var(--filet); padding-top: var(--e-6); }
+    .entete__panneau-localisation {
+      display: flex;
+      flex-direction: column;
+      gap: var(--e-4);
+      border-top: 1px solid var(--filet);
+      padding-top: var(--e-6);
+    }
+    .entete__panneau-loc-form .entete__marche-champ {
+      width: 100%;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--filet-fort);
+      color: var(--texte);
+    }
   }
 
   /* ---------- Recherche predictive ---------- */
@@ -411,7 +505,14 @@
     { "type": "image_picker", "id": "logo", "label": "Logo (sinon : nom de la boutique)" },
     { "type": "range", "id": "largeur_logo", "min": 80, "max": 320, "step": 10, "default": 160, "unit": "px", "label": "Largeur du logo" },
     { "type": "link_list", "id": "menu", "default": "main-menu", "label": "Menu principal" },
-    { "type": "checkbox", "id": "selecteur_langue", "default": true, "label": "Afficher le sélecteur FR/EN" },
+    { "type": "checkbox", "id": "selecteur_langue", "default": true, "label": "Afficher le sélecteur de langue" },
+    {
+      "type": "checkbox",
+      "id": "selecteur_marche",
+      "default": true,
+      "label": "Afficher le sélecteur de marché / devise",
+      "info": "N'apparaît que si plusieurs marchés Shopify sont configurés."
+    },
     { "type": "checkbox", "id": "superposer_accueil", "default": true, "label": "Superposer au visuel sur l'accueil" }
   ],
   "enabled_on": { "groups": ["header"] }

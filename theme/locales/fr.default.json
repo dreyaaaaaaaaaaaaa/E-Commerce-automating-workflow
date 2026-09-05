@@ -19,7 +19,9 @@
   "accessibilite": {
     "aller_au_contenu": "Aller au contenu",
     "nav_principale": "Navigation principale",
-    "fil_ariane": "Fil d'Ariane"
+    "fil_ariane": "Fil d'Ariane",
+    "choisir_langue": "Choisir la langue",
+    "choisir_marche": "Choisir le marché et la devise"
   },
   "collection": {
     "univers": "Univers",
@@ -121,6 +123,8 @@
       "passee_le": "Passée le {{ date }}",
       "statut_paiement": "Paiement",
       "statut_livraison": "Livraison",
+      "suivre_colis": "Suivre le colis",
+      "numero_suivi": "Numéro de suivi : {{ numero }}",
       "adresse_livraison": "Adresse de livraison",
       "adresse_facturation": "Adresse de facturation",
       "sous_total": "Sous-total",

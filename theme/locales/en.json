@@ -19,7 +19,9 @@
   "accessibilite": {
     "aller_au_contenu": "Skip to content",
     "nav_principale": "Main navigation",
-    "fil_ariane": "Breadcrumb"
+    "fil_ariane": "Breadcrumb",
+    "choisir_langue": "Choose language",
+    "choisir_marche": "Choose market and currency"
   },
   "collection": {
     "univers": "Collection",
@@ -121,6 +123,8 @@
       "passee_le": "Placed on {{ date }}",
       "statut_paiement": "Payment",
       "statut_livraison": "Fulfillment",
+      "suivre_colis": "Track package",
+      "numero_suivi": "Tracking number: {{ numero }}",
       "adresse_livraison": "Shipping address",
       "adresse_facturation": "Billing address",
       "sous_total": "Subtotal",

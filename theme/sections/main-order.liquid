@@ -27,6 +27,31 @@
         <dd>{{ order.fulfillment_status_label }}</dd>
       </div>
     </dl>
+
+    {%- comment -%}
+      Le suivi compte plus ici que sur une boutique au stock local : en
+      dropshipping le delai est plus long et plus variable, c'est la
+      premiere question du client. order.fulfillments porte le numero et
+      le lien reels des qu'un colis est expedie, rien a saisir a la main.
+    {%- endcomment -%}
+    {%- if order.fulfillments.size > 0 -%}
+      <div class="commande-page__suivis">
+        {%- for envoi in order.fulfillments -%}
+          {%- if envoi.tracking_url -%}
+            <a class="bouton bouton--ligne commande-page__suivi" href="{{ envoi.tracking_url }}" target="_blank" rel="noopener">
+              {{ 'compte.commande.suivre_colis' | t }}
+              {%- if order.fulfillments.size > 1 %} ({{ envoi.tracking_number }}){% endif -%}
+            </a>
+          {%- elsif envoi.tracking_number -%}
+            {%- comment -%} Transporteur non reconnu par Shopify : pas de lien calcule, on affiche au moins le numero. {%- endcomment -%}
+            <p class="mono--s commande-page__suivi-texte">
+              {{ 'compte.commande.numero_suivi' | t: numero: envoi.tracking_number }}
+              {%- if envoi.tracking_company %} ({{ envoi.tracking_company }}){% endif -%}
+            </p>
+          {%- endif -%}
+        {%- endfor -%}
+      </div>
+    {%- endif -%}
   </div>
 
   <div class="commande-page__lignes filet-haut">
@@ -94,6 +119,8 @@
   .commande-page__entete { display: flex; flex-direction: column; gap: var(--e-2); margin-bottom: var(--e-8); }
   .commande-page__statuts { display: flex; gap: var(--e-6); margin-top: var(--e-3); color: var(--texte-doux); }
   .commande-page__statuts dd { margin: 0; }
+  .commande-page__suivis { display: flex; flex-wrap: wrap; gap: var(--e-4); margin-top: var(--e-5); }
+  .commande-page__suivi-texte { color: var(--texte-doux); }
   .commande-page__lignes { padding-block: var(--e-3); margin-bottom: var(--e-8); }
   .commande-page__ligne { display: grid; grid-template-columns: 72px 1fr auto; gap: var(--e-5); align-items: center; padding-block: var(--e-5); }
   .commande-page__ligne-media { width: 72px; }
