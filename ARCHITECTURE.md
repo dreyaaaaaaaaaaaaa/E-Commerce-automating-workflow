@@ -81,19 +81,26 @@ maison/
 │   │   ├── media.liquid       LE chemin unique d'affichage d'image
 │   │   ├── carte-produit.liquid
 │   │   ├── prix.liquid
+│   │   ├── formulaire-adresse.liquid  champs partagés compte/adresses
 │   │   ├── reglages-css.liquid
 │   │   └── meta-tags.liquid   Open Graph + JSON-LD
 │   ├── sections/
-│   │   ├── entete.liquid      nav, recherche prédictive, tiroir de panier
+│   │   ├── entete.liquid      nav, recherche prédictive, tiroir de panier,
+│   │   │                      lien compte
 │   │   ├── hero.liquid  univers.liquid  nouveautes.liquid
 │   │   ├── main-collection.liquid   (page univers)
 │   │   ├── main-product.liquid      (fiche)
 │   │   ├── main-search.liquid       (résultats /search)
 │   │   ├── main-blog.liquid  main-article.liquid   (le journal)
+│   │   ├── main-login.liquid  main-register.liquid
+│   │   ├── main-reinitialiser-mot-de-passe.liquid   (recover + activate + reset)
+│   │   ├── main-account.liquid  main-order.liquid  main-addresses.liquid
 │   │   ├── main-cart.liquid  main-page.liquid  pied.liquid
 │   │   └── entete-groupe.json  pied-groupe.json
 │   ├── templates/             index / collection / product / page / cart /
-│   │                          search / blog / article / 404
+│   │   │                      search / blog / article / 404
+│   │   └── customers/         login / register / account / order /
+│   │                          addresses / activate_account / reset_password
 │   ├── config/                settings_schema.json  settings_data.json
 │   └── locales/               fr.default.json  en.json
 ├── ops/                       pipeline catalogue (Node 20, zéro dépendance)
@@ -509,6 +516,19 @@ JSON-LD `Product` et `Organization`, `canonical` sur toutes les pages.
   fiche produit rouvre le tiroir automatiquement.
 - **Le journal** : liste (`main-blog.liquid`) et article
   (`main-article.liquid`), commentaires inclus si l'admin les active.
+- **Compte client** : connexion, inscription, réinitialisation et
+  activation de mot de passe, tableau de bord (commandes récentes, accès
+  adresses), détail de commande, carnet d'adresses complet (ajout,
+  édition, suppression, adresse par défaut, sélecteur pays/région piloté
+  par les données que Shopify embarque dans `country_option_tags`). Lien
+  « Mon compte » / « Se connecter » dans l'en-tête, desktop et mobile.
+  Sans ces gabarits, `/account/*` retombait sur le rendu générique
+  Shopify, hors DA.
+- **Lighthouse CI** sur le thème d'aperçu de chaque PR
+  (`.github/lighthouserc.json`) : accessibilité bloquante, performance en
+  avertissement (un runner CI partagé n'a pas les conditions réseau du
+  budget mobile 4G documenté en section 9, un score qui fluctue là-dessus
+  ne doit pas faire échouer la PR pour de mauvaises raisons).
 
 **Reste à faire : dans l'ordre**
 1. **Créer les trois collections univers** (`table-et-lumiere`,
@@ -522,7 +542,6 @@ JSON-LD `Product` et `Organization`, `canonical` sur toutes les pages.
 4. **Pages légales** à rédiger (mentions, CGV, rétractation, médiateur) avec
    les informations réelles de l'entreprise (SIRET, adresse, hébergeur) :
    ce document ne les invente pas, elles doivent venir du client.
-5. **Lighthouse CI** à brancher sur le thème d'aperçu.
 
 ---
 

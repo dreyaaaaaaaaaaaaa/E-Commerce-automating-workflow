@@ -68,6 +68,10 @@
       {%- endcomment -%}
       <a class="lien-filet" href="{{ routes.search_url }}" data-ouvrir-recherche>{{ 'general.recherche' | t }}</a>
 
+      <a class="lien-filet" href="{% if customer %}{{ routes.account_url }}{% else %}{{ routes.account_login_url }}{% endif %}">
+        {%- if customer -%}{{ 'general.mon_compte' | t }}{%- else -%}{{ 'general.se_connecter' | t }}{%- endif -%}
+      </a>
+
       <a class="lien-filet" href="{{ routes.cart_url }}" data-ouvrir-panier>
         {{ 'general.panier' | t }} (<span data-compteur-panier>{{ cart.item_count }}</span>)
       </a>
@@ -91,6 +95,9 @@
         </ul>
         <div class="entete__panneau-pied label label--nav">
           <a href="{{ routes.search_url }}" data-ouvrir-recherche>{{ 'general.recherche' | t }}</a>
+          <a href="{% if customer %}{{ routes.account_url }}{% else %}{{ routes.account_login_url }}{% endif %}">
+            {%- if customer -%}{{ 'general.mon_compte' | t }}{%- else -%}{{ 'general.se_connecter' | t }}{%- endif -%}
+          </a>
           <a href="{{ routes.cart_url }}" data-ouvrir-panier>{{ 'general.panier' | t }} ({{ cart.item_count }})</a>
         </div>
       </div>

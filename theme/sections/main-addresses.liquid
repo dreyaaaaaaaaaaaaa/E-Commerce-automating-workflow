@@ -1,0 +1,126 @@
+{%- comment -%}
+  sections/main-addresses.liquid : carnet d'adresses.
+
+  Chaque adresse a son propre formulaire, comme le fait Shopify nativement
+  (form 'customer_address', form 'customer_address', ...id: adresse.id).
+  Le formulaire d'ajout et les formulaires d'edition sont replies par
+  defaut (details/summary) : la page reste courte avec un long carnet.
+{%- endcomment -%}
+
+<section class="enveloppe adresses-page" data-section="{{ section.id }}">
+  <div class="adresses-page__entete filet-bas">
+    <h1 class="titre-2">{{ 'compte.adresses.titre' | t }}</h1>
+    <a class="lien-filet mono--s" href="{{ routes.account_url }}">{{ 'compte.commande.retour' | t }}</a>
+  </div>
+
+  {%- comment -%} Ajout {%- endcomment -%}
+  <details class="accordeon adresses-page__ajout">
+    <summary class="accordeon__entete">
+      {{ 'compte.adresses.ajouter' | t }}
+      <span class="accordeon__signe" aria-hidden="true">+</span>
+    </summary>
+
+    {%- form 'customer_address', customer.new_address, novalidate: 'novalidate' -%}
+      {%- render 'formulaire-adresse', form: form, prefixe: 'nouvelle' -%}
+      <button type="submit" class="bouton bouton--plein">{{ 'compte.adresses.enregistrer' | t }}</button>
+    {%- endform -%}
+  </details>
+
+  {%- comment -%} Carnet existant {%- endcomment -%}
+  {%- if customer.addresses.size > 0 -%}
+    <ul class="adresses-page__liste">
+      {%- for adresse in customer.addresses -%}
+        <li class="adresses-page__carte filet-bas" data-adresse="{{ adresse.id }}">
+          <address class="corps--s">
+            {{ adresse | format_address }}
+            {%- if adresse == customer.default_address -%}
+              <span class="mono--s adresses-page__badge">{{ 'compte.adresses.par_defaut' | t }}</span>
+            {%- endif -%}
+          </address>
+
+          <div class="adresses-page__actions mono--s">
+            {%- unless adresse == customer.default_address -%}
+              {%- form 'customer_address', adresse, novalidate: 'novalidate' -%}
+                <input type="hidden" name="address[default]" value="1">
+                <button type="submit" class="adresses-page__action">
+                  {{ 'compte.adresses.definir_par_defaut' | t }}
+                </button>
+              {%- endform -%}
+            {%- endunless -%}
+
+            {%- form 'customer_address', adresse, novalidate: 'novalidate' -%}
+              <input type="hidden" name="_method" value="delete">
+              <button
+                type="submit"
+                class="adresses-page__action"
+                data-confirmer="{{ 'compte.adresses.confirmer_suppression' | t }}"
+              >{{ 'compte.adresses.supprimer' | t }}</button>
+            {%- endform -%}
+          </div>
+
+          <details class="accordeon adresses-page__edition">
+            <summary class="accordeon__entete adresses-page__resume">
+              {{ 'compte.adresses.modifier' | t }}
+              <span class="accordeon__signe" aria-hidden="true">+</span>
+            </summary>
+            {%- form 'customer_address', adresse, novalidate: 'novalidate' -%}
+              {%- render 'formulaire-adresse', form: form, prefixe: adresse.id -%}
+              <button type="submit" class="bouton bouton--ligne">{{ 'compte.adresses.enregistrer' | t }}</button>
+            {%- endform -%}
+          </details>
+        </li>
+      {%- endfor -%}
+    </ul>
+  {%- else -%}
+    <p class="corps--s adresses-page__vide">{{ 'compte.adresses.aucune' | t }}</p>
+  {%- endif -%}
+</section>
+
+{% stylesheet %}
+  .adresses-page { padding-block: clamp(40px, 5.4vw, 78px) clamp(56px, 6vw, 92px); }
+  .adresses-page__entete {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding-bottom: var(--e-6);
+    margin-bottom: var(--e-8);
+  }
+  .adresses-page__ajout { margin-bottom: var(--e-8); }
+  .adresses-page__ajout form,
+  .adresses-page__edition form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-5);
+    padding-top: var(--e-6);
+    max-width: 46ch;
+  }
+  /* Le composant pays/region est un pur comportement JS : transparent
+     pour la mise en page, ses enfants suivent le flex-column du form. */
+  selecteur-pays { display: contents; }
+  [data-groupe-region][hidden] { display: none; }
+  .adresses-page__liste { display: flex; flex-direction: column; }
+  .adresses-page__carte { padding-block: var(--e-6); display: flex; flex-direction: column; gap: var(--e-4); }
+  .adresses-page__carte address { font-style: normal; }
+  .adresses-page__badge {
+    display: inline-block;
+    margin-left: var(--e-3);
+    padding: 3px 8px;
+    border: 1px solid var(--filet-fort);
+    color: var(--texte-tenu);
+  }
+  .adresses-page__actions { display: flex; gap: var(--e-5); }
+  .adresses-page__action {
+    color: var(--texte-tenu);
+    padding-bottom: 2px;
+    border-bottom: 1px solid transparent;
+    transition: color var(--duree) var(--courbe), border-color var(--duree) var(--courbe);
+  }
+  .adresses-page__action:hover { color: var(--accent); border-color: currentColor; }
+  .adresses-page__edition { border-top: 0; }
+  .adresses-page__resume { padding-block: var(--e-3); font-size: 10.5px; }
+  .adresses-page__vide { color: var(--texte-tenu); padding-block: var(--e-8); }
+{% endstylesheet %}
+
+{% schema %}
+{ "name": "Adresses" }
+{% endschema %}

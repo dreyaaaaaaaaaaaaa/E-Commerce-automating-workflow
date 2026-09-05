@@ -1,0 +1,90 @@
+{%- comment -%}
+  sections/main-account.liquid : tableau de bord client.
+
+  Trois blocs : commandes recentes, raccourci adresses, deconnexion. Pas de
+  duplication de logique metier : les montants et statuts viennent tels
+  quels des objets order de Shopify, jamais recalcules ici.
+{%- endcomment -%}
+
+<section class="enveloppe compte-tableau" data-section="{{ section.id }}">
+  <div class="compte-tableau__entete">
+    <p class="mono">{{ 'compte.tableau_de_bord.titre' | t }}</p>
+    <h1 class="titre-1">{{ 'compte.tableau_de_bord.bonjour' | t: prenom: customer.first_name }}</h1>
+  </div>
+
+  <div class="compte-tableau__grille">
+    <div class="compte-tableau__bloc">
+      <div class="entete-section filet-bas">
+        <h2 class="titre-4">{{ 'compte.tableau_de_bord.commandes_titre' | t }}</h2>
+      </div>
+
+      {%- if customer.orders.size > 0 -%}
+        <div class="tableau">
+          <table>
+            <tbody>
+              {%- for commande in customer.orders limit: section.settings.nombre_commandes -%}
+                <tr>
+                  <td class="mono">{{ commande.name }}</td>
+                  <td class="corps--s">{{ commande.created_at | date: format: 'date' }}</td>
+                  <td class="corps--s">{{ commande.financial_status_label }}</td>
+                  <td class="corps--s">{{ commande.total_price | money }}</td>
+                  <td>
+                    <a class="lien-filet mono--s" href="{{ commande.customer_url }}">
+                      {{ 'compte.tableau_de_bord.voir_commande' | t }}
+                    </a>
+                  </td>
+                </tr>
+              {%- endfor -%}
+            </tbody>
+          </table>
+        </div>
+      {%- else -%}
+        <p class="corps--s compte-tableau__vide">{{ 'compte.tableau_de_bord.aucune_commande' | t }}</p>
+      {%- endif -%}
+    </div>
+
+    <div class="compte-tableau__bloc">
+      <div class="entete-section filet-bas">
+        <h2 class="titre-4">{{ 'compte.tableau_de_bord.adresses_titre' | t }}</h2>
+      </div>
+      <p class="corps--s">
+        {{ 'compte.adresses.compteur' | t: count: customer.addresses_count }}
+      </p>
+      <a class="bouton bouton--ligne" href="{{ routes.account_addresses_url }}">
+        {{ 'compte.tableau_de_bord.gerer_adresses' | t }}
+      </a>
+    </div>
+
+    <div class="compte-tableau__bloc">
+      <div class="entete-section filet-bas">
+        <h2 class="titre-4">{{ 'compte.tableau_de_bord.infos_titre' | t }}</h2>
+      </div>
+      <p class="corps--s">{{ customer.name }}</p>
+      <p class="corps--s">{{ customer.email }}</p>
+      <a class="lien-filet mono--s" href="{{ routes.account_logout_url }}">
+        {{ 'compte.tableau_de_bord.deconnexion' | t }}
+      </a>
+    </div>
+  </div>
+</section>
+
+{% stylesheet %}
+  .compte-tableau { padding-block: clamp(40px, 5.4vw, 78px) clamp(56px, 6vw, 92px); }
+  .compte-tableau__entete { display: flex; flex-direction: column; gap: var(--e-2); margin-bottom: var(--e-9); }
+  .compte-tableau__grille { display: grid; grid-template-columns: 1.6fr 1fr 1fr; gap: var(--e-9); align-items: start; }
+  .compte-tableau__bloc { display: flex; flex-direction: column; gap: var(--e-4); }
+  .compte-tableau__vide { color: var(--texte-tenu); padding-block: var(--e-6); }
+  .tableau { overflow-x: auto; }
+  .tableau table { width: 100%; border-collapse: collapse; }
+  .tableau td { padding: var(--e-3) var(--e-4) var(--e-3) 0; border-bottom: 1px solid var(--filet); }
+  @media (max-width: 989px) { .compte-tableau__grille { grid-template-columns: 1fr; } }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Tableau de bord",
+  "settings": [
+    { "type": "range", "id": "nombre_commandes", "min": 3, "max": 20, "step": 1, "default": 8, "label": "Commandes affichées" }
+  ]
+}
+{% endschema %}

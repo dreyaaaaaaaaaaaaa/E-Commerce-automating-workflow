@@ -1,0 +1,68 @@
+{%- comment -%}
+  sections/main-login.liquid : connexion.
+
+  Meme colonne etroite que le reste des pages de contenu. Le formulaire
+  reste natif Shopify (form 'customer_login') : jeton anti-CSRF, captcha
+  et limitation des tentatives sont geres par Shopify, pas par le theme.
+{%- endcomment -%}
+
+<section class="enveloppe compte-page" data-section="{{ section.id }}">
+  <div class="compte-page__colonne">
+    <h1 class="titre-2">{{ 'compte.connexion.titre' | t }}</h1>
+
+    {%- form 'customer_login', novalidate: 'novalidate' -%}
+      {%- if form.errors -%}
+        <p class="champ-erreur compte-page__erreur" role="alert">
+          {{ form.errors | default_errors }}
+        </p>
+      {%- endif -%}
+
+      <div class="champ-groupe">
+        <label class="label label--fin" for="connexion-courriel">{{ 'compte.connexion.courriel' | t }}</label>
+        <input
+          class="champ"
+          id="connexion-courriel"
+          type="email"
+          name="customer[email]"
+          autocomplete="email"
+          autocorrect="off"
+          autocapitalize="off"
+          required
+        >
+      </div>
+
+      <div class="champ-groupe">
+        <label class="label label--fin" for="connexion-mdp">{{ 'compte.connexion.mot_de_passe' | t }}</label>
+        <input
+          class="champ"
+          id="connexion-mdp"
+          type="password"
+          name="customer[password]"
+          autocomplete="current-password"
+          required
+        >
+      </div>
+
+      <button type="submit" class="bouton bouton--plein compte-page__envoyer">
+        {{ 'compte.connexion.envoyer' | t }}
+      </button>
+
+      <div class="compte-page__liens mono--s">
+        <a class="lien-filet" href="{{ routes.account_recover_url }}">{{ 'compte.connexion.mot_de_passe_oublie' | t }}</a>
+        <a class="lien-filet" href="{{ routes.account_register_url }}">{{ 'compte.connexion.creer_compte' | t }}</a>
+      </div>
+    {%- endform -%}
+  </div>
+</section>
+
+{% stylesheet %}
+  .compte-page { padding-block: clamp(48px, 5.4vw, 78px) clamp(56px, 6vw, 92px); }
+  .compte-page__colonne { max-width: 38ch; margin-inline: auto; display: flex; flex-direction: column; gap: var(--e-6); }
+  .compte-page__erreur { padding: var(--e-3) 0; }
+  .compte-page__envoyer { width: 100%; margin-top: var(--e-3); }
+  .compte-page__liens { display: flex; flex-direction: column; gap: var(--e-3); align-items: center; margin-top: var(--e-4); text-align: center; }
+{% endstylesheet %}
+
+{% schema %}
+{ "name": "Connexion" }
+{% endschema %}

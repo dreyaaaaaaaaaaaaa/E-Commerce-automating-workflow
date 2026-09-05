@@ -1,0 +1,113 @@
+{%- comment -%}
+  sections/main-order.liquid : detail d'une commande client.
+
+  Uniquement de la lecture : aucune action (annulation, retour) n'est geree
+  ici, ce sont des flux Shopify a part entiere (self-serve returns) qui ont
+  leur propre ecran quand ils sont actives sur la boutique.
+{%- endcomment -%}
+
+<section class="enveloppe commande-page" data-section="{{ section.id }}">
+  <a class="lien-filet mono--s commande-page__retour" href="{{ routes.account_url }}">
+    {{ 'compte.commande.retour' | t }}
+  </a>
+
+  {%- assign date_commande = order.created_at | date: format: 'date' -%}
+
+  <div class="commande-page__entete">
+    <h1 class="titre-2">{{ 'compte.commande.titre' | t: numero: order.name }}</h1>
+    <p class="mono">{{ 'compte.commande.passee_le' | t: date: date_commande }}</p>
+
+    <dl class="commande-page__statuts label--nav">
+      <div>
+        <dt class="visuellement-cache">{{ 'compte.commande.statut_paiement' | t }}</dt>
+        <dd>{{ order.financial_status_label }}</dd>
+      </div>
+      <div>
+        <dt class="visuellement-cache">{{ 'compte.commande.statut_livraison' | t }}</dt>
+        <dd>{{ order.fulfillment_status_label }}</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="commande-page__lignes filet-haut">
+    {%- for ligne in order.line_items -%}
+      <div class="commande-page__ligne filet-bas">
+        <a class="commande-page__ligne-media" href="{{ ligne.url }}" tabindex="-1" aria-hidden="true">
+          {%- render 'media', image: ligne.image, ratio: '4-5', sizes: '96px' -%}
+        </a>
+        <div class="commande-page__ligne-infos">
+          <a class="carte__titre" href="{{ ligne.url }}">{{ ligne.title }}</a>
+          {%- unless ligne.variant.title contains 'Default' -%}
+            <p class="mono--s">{{ ligne.variant.title }}</p>
+          {%- endunless -%}
+          <p class="mono--s">&times; {{ ligne.quantity }}</p>
+        </div>
+        <p class="commande-page__ligne-prix">{{ ligne.final_line_price | money }}</p>
+      </div>
+    {%- endfor -%}
+  </div>
+
+  <div class="commande-page__grille">
+    <div class="commande-page__adresses">
+      {%- if order.shipping_address -%}
+        <div>
+          <p class="mono">{{ 'compte.commande.adresse_livraison' | t }}</p>
+          <address class="corps--s">{{ order.shipping_address | format_address }}</address>
+        </div>
+      {%- endif -%}
+      {%- if order.billing_address -%}
+        <div>
+          <p class="mono">{{ 'compte.commande.adresse_facturation' | t }}</p>
+          <address class="corps--s">{{ order.billing_address | format_address }}</address>
+        </div>
+      {%- endif -%}
+    </div>
+
+    <div class="commande-page__totaux">
+      <div class="commande-page__ligne-total">
+        <span class="label label--nav">{{ 'compte.commande.sous_total' | t }}</span>
+        <span>{{ order.line_items_subtotal_price | money }}</span>
+      </div>
+      {%- for expedition in order.shipping_lines -%}
+        <div class="commande-page__ligne-total">
+          <span class="label label--nav">{{ 'compte.commande.livraison' | t }}</span>
+          <span>{{ expedition.price | money }}</span>
+        </div>
+      {%- endfor -%}
+      {%- if order.tax_price > 0 -%}
+        <div class="commande-page__ligne-total">
+          <span class="label label--nav">{{ 'compte.commande.taxes' | t }}</span>
+          <span>{{ order.tax_price | money }}</span>
+        </div>
+      {%- endif -%}
+      <div class="commande-page__ligne-total commande-page__ligne-total--fort">
+        <span class="label label--nav">{{ 'compte.commande.total' | t }}</span>
+        <span class="produit__prix">{{ order.total_price | money }}</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% stylesheet %}
+  .commande-page { padding-block: clamp(28px, 3vw, 44px) clamp(56px, 6vw, 92px); }
+  .commande-page__retour { display: inline-block; margin-bottom: var(--e-6); color: var(--texte-tenu); }
+  .commande-page__entete { display: flex; flex-direction: column; gap: var(--e-2); margin-bottom: var(--e-8); }
+  .commande-page__statuts { display: flex; gap: var(--e-6); margin-top: var(--e-3); color: var(--texte-doux); }
+  .commande-page__statuts dd { margin: 0; }
+  .commande-page__lignes { padding-block: var(--e-3); margin-bottom: var(--e-8); }
+  .commande-page__ligne { display: grid; grid-template-columns: 72px 1fr auto; gap: var(--e-5); align-items: center; padding-block: var(--e-5); }
+  .commande-page__ligne-media { width: 72px; }
+  .commande-page__ligne-infos { display: flex; flex-direction: column; gap: var(--e-1); }
+  .commande-page__ligne-prix { font-size: 13px; color: var(--texte-doux); }
+  .commande-page__grille { display: grid; grid-template-columns: 1fr 1fr; gap: var(--e-9); }
+  .commande-page__adresses { display: flex; flex-direction: column; gap: var(--e-6); }
+  .commande-page__adresses address { font-style: normal; color: var(--texte-doux); }
+  .commande-page__totaux { display: flex; flex-direction: column; gap: var(--e-2); }
+  .commande-page__ligne-total { display: flex; align-items: baseline; justify-content: space-between; color: var(--texte-doux); }
+  .commande-page__ligne-total--fort { border-top: 1px solid var(--filet); padding-top: var(--e-3); margin-top: var(--e-2); color: var(--texte); }
+  @media (max-width: 749px) { .commande-page__grille { grid-template-columns: 1fr; } }
+{% endstylesheet %}
+
+{% schema %}
+{ "name": "Commande" }
+{% endschema %}

@@ -80,6 +80,25 @@ jobs:
             --json \
             --theme "PR-${{ github.event.pull_request.number }}" > apercu.json
           cat apercu.json >> "$GITHUB_STEP_SUMMARY"
+          echo "url=$(jq -r '.theme.preview_url' apercu.json)" >> "$GITHUB_OUTPUT"
+        id: theme_apercu
+
+      # Budgets definis dans ARCHITECTURE.md section 9. L'accessibilite est
+      # bloquante (error) : une regression la est objective et imputable au
+      # code. La performance reste en warn : un run sur un runner GitHub
+      # partage n'a pas les conditions reseau du budget mobile 4G documente,
+      # donc un score fluctuant ici ne doit pas faire echouer la PR pour de
+      # mauvaises raisons. Config : .github/lighthouserc.json
+      # `continue-on-error` (pas `|| true`) : le statut reel de lhci reste
+      # visible dans l'onglet Checks (echec si l'accessibilite regresse),
+      # mais n'empeche pas le reste du workflow de continuer.
+      - name: Lighthouse CI sur le thème d'aperçu
+        continue-on-error: true
+        run: |
+          npm install --global @lhci/cli@0.14
+          lhci autorun \
+            --collect.url="${{ steps.theme_apercu.outputs.url }}" \
+            --config=.github/lighthouserc.json
 
   deployer:
     name: Publier sur la boutique

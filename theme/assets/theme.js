@@ -33,6 +33,15 @@
     });
   }
 
+  /* Confirmation avant une action destructrice (suppression d'adresse).
+     Le bouton reste un vrai submit natif : sans JS, la suppression
+     fonctionne quand meme, simplement sans la boite de confirmation. */
+  document.addEventListener('submit', (e) => {
+    const bouton = e.submitter;
+    const message = bouton?.dataset.confirmer;
+    if (message && !window.confirm(message)) e.preventDefault();
+  });
+
   /* ---------- Ajout au panier ----------
      On poste vers /cart/add.js avec `sections` : Shopify renvoie
      le HTML re-rendu du compteur de panier, qu'on remplace tel quel.
@@ -438,6 +447,53 @@
     }
   }
   customElements.define('panier-tiroir', PanierTiroir);
+
+  /* ---------- Selecteur pays / region (carnet d'adresses) ----------
+     Le select pays est rendu par Shopify (`country_option_tags`), chaque
+     <option> porte ses regions dans data-provinces (JSON). On peuple le
+     select region a partir de ca, et on le masque entierement pour les
+     pays qui n'ont pas de decoupage regional dans Shopify. */
+  class SelecteurPays extends HTMLElement {
+    connectedCallback() {
+      this.champPays = this.querySelector('select[name="address[country]"]');
+      this.groupeRegion = this.querySelector('[data-groupe-region]');
+      this.champRegion = this.querySelector('select[name="address[province]"]');
+      if (!this.champPays || !this.champRegion) return;
+
+      const paysDefaut = this.champPays.dataset.paysDefaut;
+      if (paysDefaut) this.champPays.value = paysDefaut;
+
+      this.peupler(this.champRegion.dataset.regionDefaut);
+      this.champPays.addEventListener('change', () => this.peupler());
+    }
+
+    peupler(regionAConserver) {
+      const option = this.champPays.selectedOptions[0];
+      let regions = [];
+      try {
+        regions = JSON.parse(option?.dataset.provinces || '[]');
+      } catch {
+        regions = [];
+      }
+
+      this.champRegion.replaceChildren();
+
+      if (!regions.length) {
+        this.groupeRegion.hidden = true;
+        return;
+      }
+
+      this.groupeRegion.hidden = false;
+      for (const [nom] of regions) {
+        const opt = document.createElement('option');
+        opt.value = nom;
+        opt.textContent = nom;
+        if (nom === regionAConserver) opt.selected = true;
+        this.champRegion.append(opt);
+      }
+    }
+  }
+  customElements.define('selecteur-pays', SelecteurPays);
 
   /* ---------- Consentement (Customer Privacy API de Shopify) ----------
      On ne charge aucun pixel tiers depuis le thème : les pixels passent

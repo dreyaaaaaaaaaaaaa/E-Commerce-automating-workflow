@@ -8,6 +8,9 @@
     "voir_tout": "Voir tout",
     "photo_a_venir": "Photo à venir",
     "nom_produit": "[Nom du produit]",
+    "mon_compte": "Mon compte",
+    "se_connecter": "Se connecter",
+    "se_deconnecter": "Se déconnecter",
     "meta": {
       "tags": "Étiquetté {{ tags }}",
       "page": "Page {{ page }}"
@@ -66,6 +69,94 @@
     "commander": "Commander",
     "retirer": "Retirer {{ titre }} du panier",
     "retirer_court": "Retirer"
+  },
+  "compte": {
+    "connexion": {
+      "titre": "Se connecter",
+      "courriel": "Adresse électronique",
+      "mot_de_passe": "Mot de passe",
+      "envoyer": "Se connecter",
+      "mot_de_passe_oublie": "Mot de passe oublié ?",
+      "creer_compte": "Pas encore de compte ? Le créer"
+    },
+    "inscription": {
+      "titre": "Créer un compte",
+      "prenom": "Prénom",
+      "nom": "Nom",
+      "courriel": "Adresse électronique",
+      "mot_de_passe": "Mot de passe",
+      "envoyer": "Créer mon compte",
+      "deja_client": "Déjà un compte ? Se connecter"
+    },
+    "reinitialisation": {
+      "titre": "Réinitialiser le mot de passe",
+      "texte": "Indiquez votre adresse électronique, un lien de réinitialisation vous sera envoyé.",
+      "courriel": "Adresse électronique",
+      "envoyer": "Envoyer le lien",
+      "envoye": "Si un compte existe pour cette adresse, un lien vient d'être envoyé.",
+      "retour": "Retour à la connexion"
+    },
+    "activation": {
+      "titre": "Activer le compte",
+      "texte": "Choisissez un mot de passe pour activer votre compte.",
+      "mot_de_passe": "Mot de passe",
+      "confirmation": "Confirmer le mot de passe",
+      "activer": "Activer le compte",
+      "annuler": "Annuler la création du compte"
+    },
+    "tableau_de_bord": {
+      "titre": "Mon compte",
+      "bonjour": "Bonjour {{ prenom }}",
+      "commandes_titre": "Commandes",
+      "aucune_commande": "Aucune commande pour le moment.",
+      "voir_commande": "Voir le détail",
+      "adresses_titre": "Adresses",
+      "gerer_adresses": "Gérer les adresses",
+      "infos_titre": "Informations",
+      "deconnexion": "Se déconnecter"
+    },
+    "commande": {
+      "titre": "Commande {{ numero }}",
+      "retour": "Retour au compte",
+      "passee_le": "Passée le {{ date }}",
+      "statut_paiement": "Paiement",
+      "statut_livraison": "Livraison",
+      "adresse_livraison": "Adresse de livraison",
+      "adresse_facturation": "Adresse de facturation",
+      "sous_total": "Sous-total",
+      "livraison": "Livraison",
+      "taxes": "Taxes",
+      "total": "Total"
+    },
+    "adresses": {
+      "titre": "Adresses",
+      "compteur": {
+        "zero": "Aucune adresse enregistrée",
+        "one": "{{ count }} adresse enregistrée",
+        "other": "{{ count }} adresses enregistrées"
+      },
+      "aucune": "Aucune adresse enregistrée.",
+      "ajouter": "Ajouter une adresse",
+      "modifier": "Modifier",
+      "supprimer": "Supprimer",
+      "confirmer_suppression": "Supprimer cette adresse ?",
+      "par_defaut": "Adresse par défaut",
+      "definir_par_defaut": "Définir par défaut",
+      "annuler": "Annuler",
+      "enregistrer": "Enregistrer",
+      "nouvelle_adresse": "Nouvelle adresse",
+      "modifier_adresse": "Modifier l'adresse",
+      "champ_prenom": "Prénom",
+      "champ_nom": "Nom",
+      "champ_entreprise": "Entreprise",
+      "champ_adresse1": "Adresse",
+      "champ_adresse2": "Complément d'adresse",
+      "champ_ville": "Ville",
+      "champ_pays": "Pays",
+      "champ_region": "Région",
+      "champ_code_postal": "Code postal",
+      "champ_telephone": "Téléphone"
+    }
   },
   "infolettre": {
     "courriel": "Adresse électronique",

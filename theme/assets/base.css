@@ -193,6 +193,31 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 }
 .lien-filet:hover { background-size: 0 1px; color: var(--c-laiton-fonce); }
 
+/* ---------- 6.1 Champs de formulaire ----------
+   Un seul style de champ pour tout le site : connexion, inscription,
+   adresses, infolettre. Filet bas plutot que cadre plein, coherent avec
+   le reste de la DA qui ne pose jamais de bordure fermee sur du texte. */
+.champ-groupe { display: flex; flex-direction: column; gap: var(--e-2); }
+.champ-groupe + .champ-groupe { margin-top: var(--e-5); }
+.champ {
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--filet-fort);
+  padding: 12px 14px;
+  font: 300 var(--t-corps-s)/1.5 var(--f-sans);
+  color: var(--texte);
+  transition: border-color var(--duree) var(--courbe);
+}
+.champ:focus-visible { border-color: var(--accent); outline: none; }
+.champ::placeholder { color: var(--texte-tenu); }
+.champ-erreur {
+  color: var(--c-alerte);
+  font-size: var(--t-petit);
+}
+.champ[aria-invalid='true'] { border-color: var(--c-alerte); }
+.champ-grille { display: grid; grid-template-columns: 1fr 1fr; gap: var(--e-5); }
+@media (max-width: 480px) { .champ-grille { grid-template-columns: 1fr; } }
+
 /* ---------- 7. Média & placeholder « PHOTO À VENIR » ----------
    Le placeholder n'est pas un pis-aller : tant que la photo finale
    n'est pas là, il tient la DA (hachure crème + brief de prise de vue).

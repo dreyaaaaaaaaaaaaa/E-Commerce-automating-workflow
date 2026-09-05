@@ -1,0 +1,6 @@
+{
+  "sections": {
+    "main": { "type": "main-reinitialiser-mot-de-passe", "settings": {} }
+  },
+  "order": ["main"]
+}

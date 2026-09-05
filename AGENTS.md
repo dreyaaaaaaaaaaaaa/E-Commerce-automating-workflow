@@ -56,9 +56,11 @@ section ou une locale.
 
 Ce depot contient un theme fonctionnel pour les trois gabarits maquettes
 (accueil, page univers, fiche produit), plus panier, journal (liste et
-article), recherche predictive, tiroir de panier, page de contenu, 404,
-en-tete et pied. Les polices sont deposees. Le pipeline catalogue est
-complet et teste (validation positive et negative). La section 10 de
+article), recherche predictive, tiroir de panier, compte client complet
+(connexion, inscription, mot de passe, commandes, adresses), page de
+contenu, 404, en-tete et pied. Les polices sont deposees. Le pipeline
+catalogue est complet et teste (validation positive et negative).
+Lighthouse CI tourne sur le theme d'apercu de chaque PR. La section 10 de
 `ARCHITECTURE.md` liste precisement ce qui reste a faire, dans l'ordre de
 priorite. Commencer par la, plutot que de re-decouvrir l'etat d'avancement
 en lisant tout le code.

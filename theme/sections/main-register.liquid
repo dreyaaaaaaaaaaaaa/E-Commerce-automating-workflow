@@ -1,0 +1,66 @@
+{%- comment -%}
+  sections/main-register.liquid : creation de compte.
+{%- endcomment -%}
+
+<section class="enveloppe compte-page" data-section="{{ section.id }}">
+  <div class="compte-page__colonne">
+    <h1 class="titre-2">{{ 'compte.inscription.titre' | t }}</h1>
+
+    {%- form 'create_customer', novalidate: 'novalidate' -%}
+      {%- if form.errors -%}
+        <p class="champ-erreur compte-page__erreur" role="alert">
+          {{ form.errors | default_errors }}
+        </p>
+      {%- endif -%}
+
+      <div class="champ-grille">
+        <div class="champ-groupe">
+          <label class="label label--fin" for="inscription-prenom">{{ 'compte.inscription.prenom' | t }}</label>
+          <input class="champ" id="inscription-prenom" type="text" name="customer[first_name]" autocomplete="given-name">
+        </div>
+        <div class="champ-groupe">
+          <label class="label label--fin" for="inscription-nom">{{ 'compte.inscription.nom' | t }}</label>
+          <input class="champ" id="inscription-nom" type="text" name="customer[last_name]" autocomplete="family-name">
+        </div>
+      </div>
+
+      <div class="champ-groupe">
+        <label class="label label--fin" for="inscription-courriel">{{ 'compte.inscription.courriel' | t }}</label>
+        <input
+          class="champ"
+          id="inscription-courriel"
+          type="email"
+          name="customer[email]"
+          autocomplete="email"
+          autocorrect="off"
+          autocapitalize="off"
+          required
+        >
+      </div>
+
+      <div class="champ-groupe">
+        <label class="label label--fin" for="inscription-mdp">{{ 'compte.inscription.mot_de_passe' | t }}</label>
+        <input
+          class="champ"
+          id="inscription-mdp"
+          type="password"
+          name="customer[password]"
+          autocomplete="new-password"
+          required
+        >
+      </div>
+
+      <button type="submit" class="bouton bouton--plein compte-page__envoyer">
+        {{ 'compte.inscription.envoyer' | t }}
+      </button>
+
+      <div class="compte-page__liens mono--s">
+        <a class="lien-filet" href="{{ routes.account_login_url }}">{{ 'compte.inscription.deja_client' | t }}</a>
+      </div>
+    {%- endform -%}
+  </div>
+</section>
+
+{% schema %}
+{ "name": "Inscription" }
+{% endschema %}

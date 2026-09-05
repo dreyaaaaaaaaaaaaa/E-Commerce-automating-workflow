@@ -8,6 +8,9 @@
     "voir_tout": "View all",
     "photo_a_venir": "Photo to come",
     "nom_produit": "[Product name]",
+    "mon_compte": "My account",
+    "se_connecter": "Sign in",
+    "se_deconnecter": "Sign out",
     "meta": {
       "tags": "Tagged {{ tags }}",
       "page": "Page {{ page }}"
@@ -66,6 +69,94 @@
     "commander": "Check out",
     "retirer": "Remove {{ titre }} from cart",
     "retirer_court": "Remove"
+  },
+  "compte": {
+    "connexion": {
+      "titre": "Sign in",
+      "courriel": "Email address",
+      "mot_de_passe": "Password",
+      "envoyer": "Sign in",
+      "mot_de_passe_oublie": "Forgot your password?",
+      "creer_compte": "No account yet? Create one"
+    },
+    "inscription": {
+      "titre": "Create an account",
+      "prenom": "First name",
+      "nom": "Last name",
+      "courriel": "Email address",
+      "mot_de_passe": "Password",
+      "envoyer": "Create my account",
+      "deja_client": "Already have an account? Sign in"
+    },
+    "reinitialisation": {
+      "titre": "Reset your password",
+      "texte": "Enter your email address and we will send you a reset link.",
+      "courriel": "Email address",
+      "envoyer": "Send the link",
+      "envoye": "If an account exists for that address, a link has just been sent.",
+      "retour": "Back to sign in"
+    },
+    "activation": {
+      "titre": "Activate your account",
+      "texte": "Choose a password to activate your account.",
+      "mot_de_passe": "Password",
+      "confirmation": "Confirm password",
+      "activer": "Activate account",
+      "annuler": "Decline this account"
+    },
+    "tableau_de_bord": {
+      "titre": "My account",
+      "bonjour": "Hello {{ prenom }}",
+      "commandes_titre": "Orders",
+      "aucune_commande": "No orders yet.",
+      "voir_commande": "View details",
+      "adresses_titre": "Addresses",
+      "gerer_adresses": "Manage addresses",
+      "infos_titre": "Account details",
+      "deconnexion": "Sign out"
+    },
+    "commande": {
+      "titre": "Order {{ numero }}",
+      "retour": "Back to account",
+      "passee_le": "Placed on {{ date }}",
+      "statut_paiement": "Payment",
+      "statut_livraison": "Fulfillment",
+      "adresse_livraison": "Shipping address",
+      "adresse_facturation": "Billing address",
+      "sous_total": "Subtotal",
+      "livraison": "Shipping",
+      "taxes": "Taxes",
+      "total": "Total"
+    },
+    "adresses": {
+      "titre": "Addresses",
+      "compteur": {
+        "zero": "No saved address",
+        "one": "{{ count }} saved address",
+        "other": "{{ count }} saved addresses"
+      },
+      "aucune": "No saved addresses.",
+      "ajouter": "Add an address",
+      "modifier": "Edit",
+      "supprimer": "Delete",
+      "confirmer_suppression": "Delete this address?",
+      "par_defaut": "Default address",
+      "definir_par_defaut": "Set as default",
+      "annuler": "Cancel",
+      "enregistrer": "Save",
+      "nouvelle_adresse": "New address",
+      "modifier_adresse": "Edit address",
+      "champ_prenom": "First name",
+      "champ_nom": "Last name",
+      "champ_entreprise": "Company",
+      "champ_adresse1": "Address",
+      "champ_adresse2": "Apartment, suite, etc.",
+      "champ_ville": "City",
+      "champ_pays": "Country",
+      "champ_region": "State / Province",
+      "champ_code_postal": "Postal code",
+      "champ_telephone": "Phone"
+    }
   },
   "infolettre": {
     "courriel": "Email address",

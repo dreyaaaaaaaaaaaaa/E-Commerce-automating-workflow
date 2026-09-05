@@ -1,0 +1,68 @@
+{%- comment -%}
+  snippets/formulaire-adresse.liquid : champs communs a l'ajout et a
+  l'edition d'une adresse. Doit etre rendu a l'interieur d'un
+  {% form 'customer_address', ... %} deja ouvert.
+
+  Parametres
+    form     : objet form Shopify en cours
+    prefixe  : identifiant unique pour les id de champs (evite les
+               doublons quand plusieurs formulaires d'adresse sont dans
+               la meme page)
+{%- endcomment -%}
+
+<selecteur-pays>
+  <div class="champ-grille">
+    <div class="champ-groupe">
+      <label class="label label--fin" for="{{ prefixe }}-prenom">{{ 'compte.adresses.champ_prenom' | t }}</label>
+      <input class="champ" id="{{ prefixe }}-prenom" type="text" name="address[first_name]" value="{{ form.first_name }}" autocomplete="given-name">
+    </div>
+    <div class="champ-groupe">
+      <label class="label label--fin" for="{{ prefixe }}-nom">{{ 'compte.adresses.champ_nom' | t }}</label>
+      <input class="champ" id="{{ prefixe }}-nom" type="text" name="address[last_name]" value="{{ form.last_name }}" autocomplete="family-name">
+    </div>
+  </div>
+
+  <div class="champ-groupe">
+    <label class="label label--fin" for="{{ prefixe }}-entreprise">{{ 'compte.adresses.champ_entreprise' | t }}</label>
+    <input class="champ" id="{{ prefixe }}-entreprise" type="text" name="address[company]" value="{{ form.company }}" autocomplete="organization">
+  </div>
+
+  <div class="champ-groupe">
+    <label class="label label--fin" for="{{ prefixe }}-adresse1">{{ 'compte.adresses.champ_adresse1' | t }}</label>
+    <input class="champ" id="{{ prefixe }}-adresse1" type="text" name="address[address1]" value="{{ form.address1 }}" autocomplete="address-line1">
+  </div>
+
+  <div class="champ-groupe">
+    <label class="label label--fin" for="{{ prefixe }}-adresse2">{{ 'compte.adresses.champ_adresse2' | t }}</label>
+    <input class="champ" id="{{ prefixe }}-adresse2" type="text" name="address[address2]" value="{{ form.address2 }}" autocomplete="address-line2">
+  </div>
+
+  <div class="champ-grille">
+    <div class="champ-groupe">
+      <label class="label label--fin" for="{{ prefixe }}-ville">{{ 'compte.adresses.champ_ville' | t }}</label>
+      <input class="champ" id="{{ prefixe }}-ville" type="text" name="address[city]" value="{{ form.city }}" autocomplete="address-level2">
+    </div>
+    <div class="champ-groupe">
+      <label class="label label--fin" for="{{ prefixe }}-code-postal">{{ 'compte.adresses.champ_code_postal' | t }}</label>
+      <input class="champ" id="{{ prefixe }}-code-postal" type="text" name="address[zip]" value="{{ form.zip }}" autocomplete="postal-code">
+    </div>
+  </div>
+
+  <div class="champ-grille">
+    <div class="champ-groupe">
+      <label class="label label--fin" for="{{ prefixe }}-pays">{{ 'compte.adresses.champ_pays' | t }}</label>
+      <select class="champ" id="{{ prefixe }}-pays" name="address[country]" data-pays-defaut="{{ form.country }}" autocomplete="country-name">
+        {{ country_option_tags }}
+      </select>
+    </div>
+    <div class="champ-groupe" data-groupe-region>
+      <label class="label label--fin" for="{{ prefixe }}-region">{{ 'compte.adresses.champ_region' | t }}</label>
+      <select class="champ" id="{{ prefixe }}-region" name="address[province]" data-region-defaut="{{ form.province }}" autocomplete="address-level1"></select>
+    </div>
+  </div>
+
+  <div class="champ-groupe">
+    <label class="label label--fin" for="{{ prefixe }}-telephone">{{ 'compte.adresses.champ_telephone' | t }}</label>
+    <input class="champ" id="{{ prefixe }}-telephone" type="tel" name="address[phone]" value="{{ form.phone }}" autocomplete="tel">
+  </div>
+</selecteur-pays>

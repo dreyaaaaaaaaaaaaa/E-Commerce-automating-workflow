@@ -1,0 +1,84 @@
+{%- comment -%}
+  sections/main-reinitialiser-mot-de-passe.liquid
+
+  Un seul fichier pour deux routes Shopify qui partagent la meme forme :
+    /account/recover  : demande de lien (form 'recover_customer_password')
+    /account/reset/... et /account/activate/... : saisie du nouveau mot de
+      passe (form 'reset_customer_password'), Shopify distingue activation
+      et reinitialisation via reset_password_url / addresses, pas le theme.
+{%- endcomment -%}
+
+<section class="enveloppe compte-page" data-section="{{ section.id }}">
+  <div class="compte-page__colonne">
+    {%- if reset_password -%}
+      {%- comment -%} /account/reset/... ou /account/activate/... {%- endcomment -%}
+      <h1 class="titre-2">{{ 'compte.activation.titre' | t }}</h1>
+      <p class="corps--s">{{ 'compte.activation.texte' | t }}</p>
+
+      {%- form 'reset_customer_password', novalidate: 'novalidate' -%}
+        {%- if form.errors -%}
+          <p class="champ-erreur compte-page__erreur" role="alert">{{ form.errors | default_errors }}</p>
+        {%- endif -%}
+
+        <div class="champ-groupe">
+          <label class="label label--fin" for="reinit-mdp">{{ 'compte.activation.mot_de_passe' | t }}</label>
+          <input class="champ" id="reinit-mdp" type="password" name="customer[password]" autocomplete="new-password" required>
+        </div>
+        <div class="champ-groupe">
+          <label class="label label--fin" for="reinit-mdp-confirmation">{{ 'compte.activation.confirmation' | t }}</label>
+          <input class="champ" id="reinit-mdp-confirmation" type="password" name="customer[password_confirmation]" autocomplete="new-password" required>
+        </div>
+
+        <button type="submit" class="bouton bouton--plein compte-page__envoyer">
+          {{ 'compte.activation.activer' | t }}
+        </button>
+      {%- endform -%}
+
+    {%- else -%}
+      {%- comment -%} /account/recover {%- endcomment -%}
+      <h1 class="titre-2">{{ 'compte.reinitialisation.titre' | t }}</h1>
+
+      {%- if form.posted_successfully? -%}
+        <p class="corps--s compte-page__succes" role="status">{{ 'compte.reinitialisation.envoye' | t }}</p>
+      {%- else -%}
+        <p class="corps--s">{{ 'compte.reinitialisation.texte' | t }}</p>
+
+        {%- form 'recover_customer_password', novalidate: 'novalidate' -%}
+          {%- if form.errors -%}
+            <p class="champ-erreur compte-page__erreur" role="alert">{{ form.errors | default_errors }}</p>
+          {%- endif -%}
+
+          <div class="champ-groupe">
+            <label class="label label--fin" for="recuperation-courriel">{{ 'compte.reinitialisation.courriel' | t }}</label>
+            <input
+              class="champ"
+              id="recuperation-courriel"
+              type="email"
+              name="email"
+              autocomplete="email"
+              autocorrect="off"
+              autocapitalize="off"
+              required
+            >
+          </div>
+
+          <button type="submit" class="bouton bouton--plein compte-page__envoyer">
+            {{ 'compte.reinitialisation.envoyer' | t }}
+          </button>
+        {%- endform -%}
+      {%- endif -%}
+
+      <div class="compte-page__liens mono--s">
+        <a class="lien-filet" href="{{ routes.account_login_url }}">{{ 'compte.reinitialisation.retour' | t }}</a>
+      </div>
+    {%- endif -%}
+  </div>
+</section>
+
+{% stylesheet %}
+  .compte-page__succes { color: var(--accent); }
+{% endstylesheet %}
+
+{% schema %}
+{ "name": "Mot de passe" }
+{% endschema %}
