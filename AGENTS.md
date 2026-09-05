@@ -1,5 +1,27 @@
 # Guide pour agents (humains ou LLM)
 
+## Contexte du projet (a lire avant de toucher au perimetre)
+
+Ce sera a terme un site de **dropshipping automatise**. La partie
+fournisseur/automatisation (import produit, routage des commandes) vit
+dans un **autre depot**, pas celui-ci, et n'est pas encore fusionnee.
+Ne pas supposer qu'un flux d'approvisionnement existe ici : `ops/`
+est un pipeline generique d'ecriture catalogue (JSON local vers Shopify),
+pas une integration fournisseur.
+
+Trois points sont **volontairement en pause**, sur decision du client,
+pas par oubli. Ne pas les faire avancer sans qu'il le redemande :
+
+- **Photos produit** : pas encore choisies, ni si la DA (le placeholder
+  hachure, le ratio 4:5 strict) fonctionnera bien une fois de vraies
+  photos en place. Ne pas changer le systeme de placeholder ni les regles
+  de ratio en attendant.
+- **Pages legales** (mentions, CGV, retractation, mediateur) : ne pas les
+  rediger, meme en brouillon. Il faut les vraies informations de
+  l'entreprise (SIRET, adresse, hebergeur), qui n'ont pas ete fournies.
+- **Checkout** : hors perimetre pour l'instant, habillage a faire plus
+  tard dans les reglages de marque de l'admin Shopify.
+
 Ce fichier est le point d'entree rapide. Lire dans cet ordre :
 
 1. [README.md](README.md) : demarrage en 2 minutes.

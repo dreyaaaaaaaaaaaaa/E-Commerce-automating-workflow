@@ -7,6 +7,7 @@
   "engines": { "node": ">=20" },
   "comment": "Aucune dépendance runtime, volontairement. fetch, fs et le parseur JSON de Node suffisent : un pipeline qui a le droit d'écrire dans le catalogue est un pipeline dont on veut pouvoir auditer chaque ligne.",
   "scripts": {
+    "test": "node --test tests/*.test.mjs",
     "valider": "node src/valider.mjs",
     "metachamps": "node src/appliquer-metachamps.mjs",
     "images": "node src/images.mjs",

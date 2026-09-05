@@ -9,6 +9,7 @@ on:
       - 'ops/data/**'
       - 'ops/src/**'
       - 'ops/schema/**'
+      - 'ops/tests/**'
   workflow_dispatch:
 
 permissions:
@@ -32,6 +33,10 @@ jobs:
 
       # Aucune dépendance runtime : pas de `npm ci`, donc pas de surface
       # d'attaque via un paquet transitif dans un job qui lit le catalogue.
+      - name: Tests unitaires (valider.mjs, dimensions-image.mjs, regles-da.mjs)
+        working-directory: ops
+        run: npm test
+
       - name: Valider le catalogue
         working-directory: ops
         run: node src/valider.mjs

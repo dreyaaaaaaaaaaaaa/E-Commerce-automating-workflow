@@ -114,6 +114,12 @@ maison/
 │   │   ├── appliquer-metachamps.mjs
 │   │   ├── shopify.mjs        client Admin GraphQL
 │   │   └── dimensions-image.mjs
+│   ├── tests/                 tests unitaires (node --test, zéro dépendance)
+│   │   ├── valider.test.mjs
+│   │   ├── dimensions-image.test.mjs
+│   │   ├── regles-da.test.mjs
+│   │   ├── aide-fixtures.mjs  construit un produit conforme, jetable
+│   │   └── fixtures/images/   deux JPEG minimalistes (4:5 conforme, 1:1 refusé)
 │   └── data/
 │       ├── produits/*.json    source de vérité du catalogue
 │       ├── images/            visuels sources
@@ -499,9 +505,12 @@ JSON-LD `Product` et `Organization`, `canonical` sur toutes les pages.
 **Livré et exécutable**
 - Thème complet pour les trois gabarits maquettés + panier, page de contenu,
   404, en-tête, pied de page. Tokens, placeholders DA, i18n FR/EN.
-- Pipeline catalogue en cinq étapes, validateur testé (les garde-fous ont été
-  vérifiés en positif *et* en négatif : ratio 1:1 refusé, capitales refusées,
-  doublons de handle/SKU détectés).
+- Pipeline catalogue en cinq étapes, avec une vraie suite de tests
+  (`ops/tests`, `node --test`, aucune dépendance) : 20 cas couvrant les
+  garde-fous en positif *et* en négatif (ratio 1:1 refusé, capitales
+  refusées, doublons de handle/SKU/référence détectés, JSON invalide
+  signalé sans faire planter le lot, dossier introuvable levant une
+  erreur explicite) plus le parseur JPEG/PNG/WebP fait main.
 - Trois workflows CI avec séparation lecture / écriture et points de contrôle
   humains.
 - Les trois `.woff2` (Instrument Serif régulière, Instrument Serif italique,
@@ -555,6 +564,7 @@ node tools/verifier-theme.mjs        # parité FR/EN, snippets, sections
 
 # Catalogue, en local (jeton dans ops/.env)
 cd ops
+npm test                             # tests unitaires, aucun réseau ni jeton
 npm run valider                      # conformité DA, hors ligne
 npm run metachamps                   # simulation des définitions
 npm run metachamps -- --appliquer
