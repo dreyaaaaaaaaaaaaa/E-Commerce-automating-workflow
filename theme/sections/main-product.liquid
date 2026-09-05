@@ -104,12 +104,19 @@
           {%- form 'product', product, novalidate: 'novalidate' -%}
             {%- unless product.has_only_default_variant -%}
               {%- for option in product.options_with_values -%}
+                {%- liquid
+                  assign nom_option_bas = option.name | downcase
+                  assign est_couleur = false
+                  if nom_option_bas == 'couleur' or nom_option_bas == 'color' or nom_option_bas == 'colour'
+                    assign est_couleur = true
+                  endif
+                -%}
                 <fieldset class="produit__option">
                   <legend class="label label--fin produit__option-titre">
-                    {{ option.name }} &mdash;
+                    {{ option.name }} :
                     <span class="produit__option-valeur">{{ option.selected_value }}</span>
                   </legend>
-                  <div class="produit__pastilles">
+                  <div class="produit__pastilles{% if est_couleur %} produit__pastilles--couleur{% endif %}">
                     {%- for valeur in option.values -%}
                       {%- assign id = section.id | append: '-' | append: option.position | append: '-' | append: forloop.index -%}
                       <input
@@ -120,7 +127,18 @@
                         class="visuellement-cache"
                         {% if valeur == option.selected_value %}checked{% endif %}
                       >
-                      <label class="pastille label--nav" for="{{ id }}">{{ valeur }}</label>
+                      {%- if est_couleur -%}
+                        <label
+                          class="pastille pastille--couleur"
+                          for="{{ id }}"
+                          style="background:{% render 'couleur-swatch', nom: valeur %}"
+                          title="{{ valeur | escape }}"
+                        >
+                          <span class="visuellement-cache">{{ valeur }}</span>
+                        </label>
+                      {%- else -%}
+                        <label class="pastille label--nav" for="{{ id }}">{{ valeur }}</label>
+                      {%- endif -%}
                     {%- endfor -%}
                   </div>
                 </fieldset>
@@ -247,6 +265,23 @@
   }
   .produit__pastilles input:checked + .pastille { border-color: var(--accent); color: var(--accent); }
   .produit__pastilles input:focus-visible + .pastille { outline: var(--focus); outline-offset: 2px; }
+
+  /* Pastilles couleur : cercles pleins, pas d'etiquette texte. La couleur
+     porte l'information ; le nom reste lisible via le title et le label
+     visuellement cache, pour l'accessibilite et le SEO. */
+  .produit__pastilles--couleur { gap: var(--e-3); align-items: center; }
+  .pastille--couleur {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid var(--filet-fort);
+    box-shadow: inset 0 0 0 2px var(--fond);
+  }
+  .produit__pastilles--couleur input:checked + .pastille--couleur {
+    border-color: var(--accent);
+    box-shadow: inset 0 0 0 2px var(--fond), 0 0 0 1px var(--accent);
+  }
   .produit__ligne-achat { display: flex; gap: var(--e-3); margin-top: var(--e-4); }
   .quantite {
     display: inline-flex;

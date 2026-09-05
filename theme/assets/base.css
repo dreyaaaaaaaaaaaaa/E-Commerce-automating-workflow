@@ -265,6 +265,13 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   font: 400 9.5px var(--f-sans); letter-spacing: var(--ls-label);
   text-transform: uppercase; padding: 6px 10px;
 }
+.carte__couleurs { display: flex; align-items: center; gap: var(--e-1); margin-top: 2px; }
+.carte__pastille {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 1px solid var(--filet-fort);
+  box-shadow: inset 0 0 0 1px var(--fond);
+}
+.carte__pastille-reste { font: 400 9px var(--f-mono); letter-spacing: .1em; color: var(--texte-tenu); }
 
 /* ---------- 9. Accordéon (détails produit) ---------- */
 .accordeon { border-top: 1px solid var(--filet); }

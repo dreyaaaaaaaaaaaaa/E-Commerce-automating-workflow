@@ -12,3 +12,7 @@ ops/rapports/*.json
 
 # Le CLI Shopify écrit ici.
 .shopify/
+
+# Fichiers de travail du canvas Claude Design (maquettes visuelles) :
+# pas du code du theme, ne doit pas vivre dans ce depot.
+.design-canvas/

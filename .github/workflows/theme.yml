@@ -41,14 +41,23 @@ jobs:
       # Garde-fou DA : aucune couleur en dur hors de base.css et des snippets
       # de réglages. Si quelqu'un colle un #ff0000 dans une section, la CI le
       # refuse — c'est ce qui empêche la palette de se disperser.
+      # Deux exceptions documentees, aucune autre :
+      #   - reglages-css.liquid est LE robinet qui transforme un reglage
+      #     marchand en couleur (voir base.css).
+      #   - couleur-swatch.liquid mappe des noms de variante ("Ivoire",
+      #     "Nuit"...) vers une couleur d'affichage. Ce ne sont pas des
+      #     couleurs d'interface a garder alignees sur la DA, ce sont des
+      #     donnees produit : une teinte de plus ne fait pas deriver le
+      #     theme, contrairement a une couleur d'interface en dur.
       - name: Refuser les couleurs en dur dans les sections
         run: |
           fautifs=$(grep -rEn '#[0-9a-fA-F]{3,6}\b' theme/sections theme/snippets \
             --include='*.liquid' \
             | grep -v 'reglages-css.liquid' \
+            | grep -v 'couleur-swatch.liquid' \
             | grep -v 'default:' || true)
           if [ -n "$fautifs" ]; then
-            echo "Couleurs en dur détectées — utiliser les variables de base.css :"
+            echo "Couleurs en dur détectées : utiliser les variables de base.css :"
             echo "$fautifs"
             exit 1
           fi

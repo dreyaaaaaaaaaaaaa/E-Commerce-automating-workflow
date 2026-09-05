@@ -1,0 +1,39 @@
+{%- comment -%}
+  snippets/couleur-swatch.liquid : nom de couleur -> valeur CSS.
+
+  Rend uniquement une couleur (hex), a utiliser dans un attribut style :
+  style="background:{% render 'couleur-swatch', nom: 'Ivoire' %}"
+
+  Pas de metachamp de swatch configure cote Shopify pour l'instant : cette
+  table couvre les teintes du nuancier de la maison (voir base.css) plus
+  les mots de couleur les plus courants dans un catalogue FR. Un nom non
+  reconnu retombe sur un neutre chaud plutot que sur un rendu casse.
+{%- endcomment -%}
+
+{%- liquid
+  assign cle = nom | strip | downcase
+  case cle
+    when 'ivoire', 'blanc', 'blanc ivoire', 'creme', 'crème'
+      assign valeur = '#f0eae0'
+    when 'laiton', 'laiton clair', 'or', 'dore', 'doré'
+      assign valeur = '#c49a55'
+    when 'laiton fonce', 'laiton foncé', 'bronze', 'cuivre'
+      assign valeur = '#a9803c'
+    when 'fume', 'fumé', 'gris fume', 'gris fumé'
+      assign valeur = '#5c554c'
+    when 'gris'
+      assign valeur = '#8c8479'
+    when 'noir', 'encre', 'noir chaud'
+      assign valeur = '#1a1512'
+    when 'brun', 'marron', 'terre cuite', 'terracotta'
+      assign valeur = '#8a5a3c'
+    when 'nuit', 'bleu', 'bleu nuit'
+      assign valeur = '#15203a'
+    when 'vert', 'sauge', 'olive'
+      assign valeur = '#4a5a42'
+    when 'beige', 'sable'
+      assign valeur = '#d9c9ae'
+    else
+      assign valeur = '#cbbfa8'
+  endcase
+-%}{{ valeur }}

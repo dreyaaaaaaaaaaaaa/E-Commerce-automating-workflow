@@ -11,6 +11,15 @@
 {%- liquid
   assign sizes = sizes | default: '(min-width: 990px) 30vw, (min-width: 640px) 45vw, 90vw'
   assign brief = produit.metafields.custom.brief_photo.value | default: 'produit en situation'
+
+  assign option_couleur = blank
+  for option in produit.options_with_values
+    assign nom_bas = option.name | downcase
+    if nom_bas == 'couleur' or nom_bas == 'color' or nom_bas == 'colour'
+      assign option_couleur = option
+      break
+    endif
+  endfor
 -%}
 
 <a
@@ -37,4 +46,15 @@
 
   <span class="carte__titre">{{ produit.title | escape }}</span>
   <span class="carte__prix">{%- render 'prix', produit: produit -%}</span>
+
+  {%- if option_couleur -%}
+    <span class="carte__couleurs" aria-hidden="true">
+      {%- for valeur in option_couleur.values limit: 5 -%}
+        <span class="carte__pastille" style="background:{% render 'couleur-swatch', nom: valeur %}"></span>
+      {%- endfor -%}
+      {%- if option_couleur.values.size > 5 -%}
+        <span class="carte__pastille-reste">+{{ option_couleur.values.size | minus: 5 }}</span>
+      {%- endif -%}
+    </span>
+  {%- endif -%}
 </a>
