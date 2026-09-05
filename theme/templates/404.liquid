@@ -1,0 +1,17 @@
+<section class="enveloppe erreur-404">
+  <p class="mono">{{ 'erreur.code' | t }}</p>
+  <h1 class="titre-1">{{ 'erreur.titre' | t }}</h1>
+  <p class="corps erreur-404__texte">{{ 'erreur.texte' | t }}</p>
+  <a class="bouton bouton--plein" href="{{ routes.root_url }}">{{ 'erreur.retour' | t }}</a>
+</section>
+
+<style>
+  .erreur-404 {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--e-5);
+    padding-block: clamp(80px, 12vw, 180px);
+    max-width: 48ch;
+  }
+</style>

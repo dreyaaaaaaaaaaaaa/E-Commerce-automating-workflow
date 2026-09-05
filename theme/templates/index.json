@@ -1,0 +1,39 @@
+{
+  "sections": {
+    "hero": {
+      "type": "hero",
+      "settings": {
+        "surtitre": "Art de la table & décoration",
+        "titre": "La table,",
+        "titre_2": "comme un décor.",
+        "chapo": "Des pièces choisies pour la façon dont elles prennent la lumière. Réunies en univers, jamais en catalogue.",
+        "cta_libelle": "Découvrir les univers",
+        "brief_photo": "plein écran · table en bois, marbre et laiton, lumière rasante de fin de journée"
+      }
+    },
+    "univers": {
+      "type": "univers",
+      "blocks": {
+        "u1": { "type": "univers", "settings": { "titre_secours": "Table & Lumière" } },
+        "u2": { "type": "univers", "settings": { "titre_secours": "Terre & Grès" } },
+        "u3": { "type": "univers", "settings": { "titre_secours": "Nuit & Laiton" } }
+      },
+      "block_order": ["u1", "u2", "u3"],
+      "settings": {
+        "surtitre": "Trois ambiances",
+        "titre": "Nos univers",
+        "lien_libelle": "Voir tout"
+      }
+    },
+    "nouveautes": {
+      "type": "nouveautes",
+      "settings": {
+        "surtitre": "Dernières pièces",
+        "titre": "Nouveautés",
+        "nombre": 4,
+        "numeroter": false
+      }
+    }
+  },
+  "order": ["hero", "univers", "nouveautes"]
+}

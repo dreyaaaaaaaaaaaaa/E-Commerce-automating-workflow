@@ -1,0 +1,87 @@
+<!doctype html>
+<html
+  lang="{{ request.locale.iso_code }}"
+  dir="{{ settings.direction | default: 'ltr' }}"
+>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="{{ settings.couleur_fond | default: '#faf6ef' }}">
+    <link rel="canonical" href="{{ canonical_url }}">
+
+    {%- comment -%}
+      Un seul domaine tiers : la CDN Shopify. Les polices sont auto-hébergées
+      (assets du thème) : pas de requête vers fonts.googleapis.com, ce qui
+      évite un origin supplémentaire et le transfert d'IP hors Shopify (RGPD).
+    {%- endcomment -%}
+    <link rel="preconnect" href="https://cdn.shopify.com" crossorigin>
+
+    {%- if settings.favicon != blank -%}
+      <link rel="icon" type="image/png" href="{{ settings.favicon | image_url: width: 32, height: 32 }}">
+      <link rel="apple-touch-icon" href="{{ settings.favicon | image_url: width: 180, height: 180 }}">
+    {%- endif -%}
+
+    <title>
+      {{- page_title -}}
+      {%- if current_tags %} &middot; {{ 'general.meta.tags' | t: tags: current_tags | join: ', ' }}{% endif -%}
+      {%- if current_page != 1 %} &middot; {{ 'general.meta.page' | t: page: current_page }}{% endif -%}
+      {%- unless page_title contains shop.name %} &middot; {{ shop.name }}{% endunless -%}
+    </title>
+    {%- if page_description -%}
+      <meta name="description" content="{{ page_description | escape }}">
+    {%- endif -%}
+
+    {%- render 'meta-tags' -%}
+
+    {%- comment -%} Les deux fontes de la DA, préchargées sur le chemin critique. {%- endcomment -%}
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+          href="{{ 'InstrumentSerif-Regular.woff2' | asset_url }}">
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+          href="{{ 'Jost-Variable.woff2' | asset_url }}">
+    {{ 'fonts.css' | asset_url | stylesheet_tag }}
+    {{ 'base.css' | asset_url | stylesheet_tag }}
+
+    {%- comment -%}
+      Réglages marchand injectés en variables CSS. Un seul point d'entrée :
+      impossible pour un éditeur de section de peindre hors palette.
+    {%- endcomment -%}
+    {%- render 'reglages-css' -%}
+
+    <script src="{{ 'theme.js' | asset_url }}" defer></script>
+
+    {{ content_for_header }}
+  </head>
+
+  <body class="gabarit--{{ template.name | handle }}{% if template.suffix %} gabarit--{{ template.suffix | handle }}{% endif %}">
+    <a class="saut-contenu" href="#contenu-principal">{{ 'accessibilite.aller_au_contenu' | t }}</a>
+
+    {%- sections 'entete-groupe' -%}
+
+    <main id="contenu-principal" role="main" tabindex="-1">
+      {{ content_for_layout }}
+    </main>
+
+    {%- sections 'pied-groupe' -%}
+
+    {%- comment -%}
+      Données de panier exposées au JS du thème. `| json` sur un objet Shopify
+      est sûr (échappement des chevrons géré par Liquid) ; on n'y met jamais
+      de saisie client brute.
+    {%- endcomment -%}
+    <script type="application/json" id="donnees-boutique">
+      {
+        "routes": {
+          "cart_add": {{ routes.cart_add_url | json }},
+          "cart_change": {{ routes.cart_change_url | json }},
+          "cart": {{ routes.cart_url | json }},
+          "predictive_search": {{ routes.predictive_search_url | json }}
+        },
+        "cart_count": {{ cart.item_count | json }},
+        "moneyFormat": {{ shop.money_format | json }}
+      }
+    </script>
+
+    <div id="annonce-live" class="visuellement-cache" role="status" aria-live="polite"></div>
+  </body>
+</html>

@@ -1,0 +1,87 @@
+{
+  "general": {
+    "accueil": "Accueil",
+    "recherche": "Recherche",
+    "panier": "Panier",
+    "menu": "Menu",
+    "decouvrir": "Découvrir",
+    "voir_tout": "Voir tout",
+    "photo_a_venir": "Photo à venir",
+    "nom_produit": "[Nom du produit]",
+    "meta": {
+      "tags": "Étiquetté {{ tags }}",
+      "page": "Page {{ page }}"
+    }
+  },
+  "accessibilite": {
+    "aller_au_contenu": "Aller au contenu",
+    "nav_principale": "Navigation principale",
+    "fil_ariane": "Fil d'Ariane"
+  },
+  "collection": {
+    "univers": "Univers",
+    "tout": "Tout",
+    "trier": "Trier ·",
+    "filtrer": "Filtrer",
+    "stylisme": "Stylisme",
+    "nombre_pieces": "Nombre de pièces",
+    "pieces": {
+      "one": "{{ count }} pièce",
+      "other": "{{ count }} pièces"
+    },
+    "aucun_produit": "Cet univers n'a pas encore de pièce en ligne.",
+    "pagination": "Pagination",
+    "precedent": "Précédent",
+    "suivant": "Suivant",
+    "page_sur": "Page {{ courante }} / {{ total }}"
+  },
+  "produit": {
+    "reference": "Réf.",
+    "quantite": "Quantité",
+    "diminuer": "Diminuer la quantité",
+    "augmenter": "Augmenter la quantité",
+    "ajouter_au_panier": "Ajouter au panier",
+    "ajout_en_cours": "Ajout…",
+    "ajoute": "Ajouté au panier",
+    "erreur": "Une erreur est survenue, merci de réessayer.",
+    "epuise": "Épuisé",
+    "en_promotion": "En promotion",
+    "a_partir_de": "À partir de {{ prix }}",
+    "voir_visuel": "Voir le visuel {{ index }}",
+    "details_dimensions": "Détails & dimensions",
+    "livraison_retours": "Livraison & retours",
+    "entretien": "Entretien"
+  },
+  "panier": {
+    "titre": "Panier",
+    "compteur": {
+      "one": "{{ count }} pièce",
+      "other": "{{ count }} pièces"
+    },
+    "vide": "Votre panier est vide.",
+    "continuer": "Parcourir les pièces",
+    "sous_total": "Sous-total",
+    "taxes_livraison": "Taxes incluses. Livraison calculée à l'étape suivante.",
+    "mettre_a_jour": "Mettre à jour",
+    "commander": "Commander",
+    "retirer": "Retirer {{ titre }} du panier",
+    "retirer_court": "Retirer"
+  },
+  "infolettre": {
+    "courriel": "Adresse électronique",
+    "placeholder": "votre@adresse.fr",
+    "envoyer": "S'inscrire",
+    "merci": "Merci : à bientôt dans votre boîte.",
+    "rgpd": "Une lettre par saison. Désinscription en un clic. Aucune donnée revendue."
+  },
+  "pied": {
+    "tous_droits": "Tous droits réservés",
+    "moyens_paiement": "Moyens de paiement acceptés"
+  },
+  "erreur": {
+    "code": "Erreur 404",
+    "titre": "Cette page n'existe plus.",
+    "texte": "La pièce a peut-être quitté le catalogue, ou l'adresse a changé.",
+    "retour": "Retour à l'accueil"
+  }
+}

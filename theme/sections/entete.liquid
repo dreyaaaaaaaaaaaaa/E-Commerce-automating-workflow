@@ -1,0 +1,167 @@
+{%- comment -%}
+  sections/entete.liquid : en-tête.
+  Sur l'accueil il se superpose au hero (fond transparent, texte encre) ;
+  ailleurs il est posé sur l'ivoire avec un filet bas.
+{%- endcomment -%}
+
+{%- liquid
+  assign transparent = false
+  if template.name == 'index' and section.settings.superposer_accueil
+    assign transparent = true
+  endif
+-%}
+
+<header
+  class="entete{% if transparent %} entete--transparent{% endif %}"
+  data-section="{{ section.id }}"
+>
+  <div class="entete__barre">
+    {%- comment -%} Wordmark {%- endcomment -%}
+    <a class="entete__marque" href="{{ routes.root_url }}">
+      {%- if section.settings.logo != blank -%}
+        <img
+          src="{{ section.settings.logo | image_url: width: 320 }}"
+          alt="{{ shop.name | escape }}"
+          width="{{ section.settings.largeur_logo }}"
+          height="auto"
+          loading="eager"
+        >
+      {%- else -%}
+        {{ shop.name }}
+      {%- endif -%}
+    </a>
+
+    {%- comment -%} Navigation principale (desktop) {%- endcomment -%}
+    <nav class="entete__nav label label--nav" aria-label="{{ 'accessibilite.nav_principale' | t }}">
+      {%- for lien in section.settings.menu.links -%}
+        <a
+          class="lien-filet"
+          href="{{ lien.url }}"
+          {% if lien.current %}aria-current="page"{% endif %}
+        >{{ lien.title | escape }}</a>
+      {%- endfor -%}
+    </nav>
+
+    {%- comment -%} Utilitaires : langue, recherche, panier {%- endcomment -%}
+    <div class="entete__utils label label--nav">
+      {%- if section.settings.selecteur_langue and localization.available_languages.size > 1 -%}
+        <form method="post" action="{{ routes.root_url }}localization" class="entete__langues">
+          <input type="hidden" name="form_type" value="localization">
+          <input type="hidden" name="_method" value="put">
+          <input type="hidden" name="return_to" value="{{ request.path }}">
+          {%- for langue in localization.available_languages -%}
+            <button
+              type="submit"
+              name="locale_code"
+              value="{{ langue.iso_code }}"
+              class="entete__langue{% if langue.iso_code == localization.language.iso_code %} est-actif{% endif %}"
+              lang="{{ langue.iso_code }}"
+            >{{ langue.iso_code | upcase }}</button>
+            {%- unless forloop.last %}<span aria-hidden="true">/</span>{% endunless -%}
+          {%- endfor -%}
+        </form>
+      {%- endif -%}
+
+      <a class="lien-filet" href="{{ routes.search_url }}">{{ 'general.recherche' | t }}</a>
+
+      <a class="lien-filet" href="{{ routes.cart_url }}">
+        {{ 'general.panier' | t }} (<span data-compteur-panier>{{ cart.item_count }}</span>)
+      </a>
+    </div>
+
+    {%- comment -%} Déclencheur mobile {%- endcomment -%}
+    <nav-mobile class="entete__mobile">
+      <button
+        class="label label--nav"
+        data-ouvrir
+        type="button"
+        aria-expanded="false"
+        aria-controls="panneau-nav"
+      >{{ 'general.menu' | t }}</button>
+
+      <div id="panneau-nav" class="entete__panneau" data-panneau hidden>
+        <ul class="entete__panneau-liste">
+          {%- for lien in section.settings.menu.links -%}
+            <li><a class="titre-4" href="{{ lien.url }}">{{ lien.title | escape }}</a></li>
+          {%- endfor -%}
+        </ul>
+        <div class="entete__panneau-pied label label--nav">
+          <a href="{{ routes.search_url }}">{{ 'general.recherche' | t }}</a>
+          <a href="{{ routes.cart_url }}">{{ 'general.panier' | t }} ({{ cart.item_count }})</a>
+        </div>
+      </div>
+    </nav-mobile>
+  </div>
+</header>
+
+{% stylesheet %}
+  .entete {
+    position: relative;
+    z-index: 10;
+    background: var(--fond);
+    border-bottom: 1px solid var(--filet);
+  }
+  .entete--transparent {
+    position: absolute;
+    inset-inline: 0;
+    background: transparent;
+    border-bottom: 0;
+  }
+  .entete__barre {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--e-8);
+    height: 80px;
+    max-width: var(--largeur-max);
+    margin-inline: auto;
+    padding-inline: var(--gouttiere);
+    color: var(--texte);
+  }
+  .entete__marque {
+    font-family: var(--f-serif);
+    font-size: 21px;
+    letter-spacing: .02em;
+    white-space: nowrap;
+  }
+  .entete__nav { display: flex; gap: var(--e-8); }
+  .entete__utils { display: flex; align-items: center; gap: var(--e-6); }
+  .entete__langues { display: flex; align-items: center; gap: var(--e-1); }
+  .entete__langue { letter-spacing: inherit; text-transform: inherit; color: var(--texte-tenu); }
+  .entete__langue.est-actif { color: var(--texte); }
+  .entete__mobile { display: none; }
+
+  @media (max-width: 989px) {
+    .entete__barre { height: 64px; }
+    .entete__nav, .entete__utils { display: none; }
+    .entete__mobile { display: block; }
+    .entete__panneau {
+      position: fixed;
+      inset: 64px 0 0;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: var(--e-9);
+      padding: var(--e-9) var(--gouttiere) var(--e-10);
+      background: var(--fond);
+      overflow-y: auto;
+    }
+    .entete__panneau-liste { display: flex; flex-direction: column; gap: var(--e-6); }
+    .entete__panneau-pied { display: flex; gap: var(--e-6); border-top: 1px solid var(--filet); padding-top: var(--e-6); }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "En-tête",
+  "settings": [
+    { "type": "image_picker", "id": "logo", "label": "Logo (sinon : nom de la boutique)" },
+    { "type": "range", "id": "largeur_logo", "min": 80, "max": 320, "step": 10, "default": 160, "unit": "px", "label": "Largeur du logo" },
+    { "type": "link_list", "id": "menu", "default": "main-menu", "label": "Menu principal" },
+    { "type": "checkbox", "id": "selecteur_langue", "default": true, "label": "Afficher le sélecteur FR/EN" },
+    { "type": "checkbox", "id": "superposer_accueil", "default": true, "label": "Superposer au visuel sur l'accueil" }
+  ],
+  "enabled_on": { "groups": ["header"] }
+}
+{% endschema %}

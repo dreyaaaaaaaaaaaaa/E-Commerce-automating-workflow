@@ -1,0 +1,33 @@
+{
+  "name": "Pied de page",
+  "type": "footer",
+  "sections": {
+    "pied": {
+      "type": "pied",
+      "blocks": {
+        "boutique": {
+          "type": "menu",
+          "settings": { "titre": "Boutique", "menu": "footer-boutique" }
+        },
+        "maison": {
+          "type": "menu",
+          "settings": { "titre": "La maison", "menu": "footer-maison" }
+        },
+        "infolettre": {
+          "type": "infolettre",
+          "settings": {
+            "titre": "Le journal",
+            "texte": "Une lettre par saison : nouvelles pièces, tables dressées, coulisses de stylisme."
+          }
+        }
+      },
+      "block_order": ["boutique", "maison", "infolettre"],
+      "settings": {
+        "signature": "Pièces choisies pour la façon dont elles prennent la lumière.",
+        "menu_legal": "footer-legal",
+        "afficher_moyens_paiement": true
+      }
+    }
+  },
+  "order": ["pied"]
+}

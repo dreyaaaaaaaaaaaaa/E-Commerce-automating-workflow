@@ -1,0 +1,313 @@
+{%- comment -%}
+  sections/main-product.liquid : fiche produit.
+
+  Structure du comp 1a : colonne de vignettes 96px, visuel principal 4:5,
+  colonne d'information 470px. Les trois accordéons sont alimentés par des
+  métachamps, jamais par la description libre : c'est ce qui rend la fiche
+  homogène quel que soit le rédacteur, et ce qui permet au pipeline de
+  refuser un produit incomplet avant publication.
+{%- endcomment -%}
+
+{%- liquid
+  assign variante = product.selected_or_first_available_variant
+  assign univers = product.collections | where: 'template_suffix', 'univers' | first
+  if univers == blank
+    assign univers = product.collections.first
+  endif
+  assign reference = product.metafields.custom.reference_interne.value | default: variante.sku
+  assign matiere = product.metafields.custom.matiere.value
+  assign dimensions = product.metafields.custom.dimensions.value
+  assign entretien = product.metafields.custom.entretien.value
+  assign brief = product.metafields.custom.brief_photo.value | default: 'produit en situation · 4:5 · nappe de lin, ombre longue'
+-%}
+
+<section class="produit" data-section="{{ section.id }}">
+  <nav class="enveloppe produit__ariane mono--s" aria-label="{{ 'accessibilite.fil_ariane' | t }}">
+    <a class="lien-filet" href="{{ routes.root_url }}">{{ 'general.accueil' | t }}</a>
+    {%- if univers -%}
+      <span aria-hidden="true">&middot;</span>
+      <a class="lien-filet" href="{{ univers.url }}">{{ univers.title }}</a>
+    {%- endif -%}
+    <span aria-hidden="true">&middot;</span>
+    <span aria-current="page">{{ product.title }}</span>
+  </nav>
+
+  <div class="enveloppe produit__corps">
+    {%- comment -%} Colonne de vignettes {%- endcomment -%}
+    <div class="produit__vignettes">
+      {%- for media in product.media limit: 6 -%}
+        <button
+          class="produit__vignette{% if forloop.first %} est-actif{% endif %}"
+          type="button"
+          data-index="{{ forloop.index0 }}"
+          aria-label="{{ 'produit.voir_visuel' | t: index: forloop.index }}"
+        >
+          <img
+            src="{{ media.preview_image | image_url: width: 192 }}"
+            alt=""
+            width="96"
+            height="120"
+            loading="lazy"
+          >
+        </button>
+      {%- endfor -%}
+    </div>
+
+    {%- comment -%} Visuel principal {%- endcomment -%}
+    <div class="produit__galerie">
+      {%- if product.media.size > 0 -%}
+        {%- for media in product.media -%}
+          <div class="produit__vue" data-index="{{ forloop.index0 }}" {% unless forloop.first %}hidden{% endunless %}>
+            {%- render 'media',
+              image: media.preview_image,
+              ratio: '4-5',
+              sizes: '(min-width: 990px) 46vw, 100vw',
+              priorite: forloop.first,
+              alt: media.alt
+            -%}
+          </div>
+        {%- endfor -%}
+      {%- else -%}
+        {%- render 'media', ratio: '4-5', brief: brief, sizes: '(min-width: 990px) 46vw, 100vw', priorite: true -%}
+      {%- endif -%}
+    </div>
+
+    {%- comment -%} Colonne d'information {%- endcomment -%}
+    <div class="produit__infos">
+      {%- if univers -%}
+        <p class="label label--fin produit__univers">{{ univers.title }}</p>
+      {%- endif -%}
+
+      <h1 class="titre-2">{{ product.title }}</h1>
+
+      <div class="produit__prix-ligne">
+        <p class="produit__prix" data-prix>{%- render 'prix', produit: product, variante: variante -%}</p>
+        {%- if reference != blank -%}
+          <p class="mono--s">{{ 'produit.reference' | t }} {{ reference | escape }}</p>
+        {%- endif -%}
+      </div>
+
+      {%- if product.description != blank -%}
+        <div class="corps--l produit__description">{{ product.description }}</div>
+      {%- endif -%}
+
+      <selecteur-variante data-section="{{ section.id }}" class="produit__achat">
+        <script type="application/json">
+          {{ product.variants | json }}
+        </script>
+
+        <formulaire-panier
+          data-libelle-chargement="{{ 'produit.ajout_en_cours' | t }}"
+          data-libelle-ajoute="{{ 'produit.ajoute' | t }}"
+          data-libelle-erreur="{{ 'produit.erreur' | t }}"
+        >
+          {%- form 'product', product, novalidate: 'novalidate' -%}
+            {%- unless product.has_only_default_variant -%}
+              {%- for option in product.options_with_values -%}
+                <fieldset class="produit__option">
+                  <legend class="label label--fin produit__option-titre">
+                    {{ option.name }} &mdash;
+                    <span class="produit__option-valeur">{{ option.selected_value }}</span>
+                  </legend>
+                  <div class="produit__pastilles">
+                    {%- for valeur in option.values -%}
+                      {%- assign id = section.id | append: '-' | append: option.position | append: '-' | append: forloop.index -%}
+                      <input
+                        type="radio"
+                        id="{{ id }}"
+                        name="{{ option.name | escape }}"
+                        value="{{ valeur | escape }}"
+                        class="visuellement-cache"
+                        {% if valeur == option.selected_value %}checked{% endif %}
+                      >
+                      <label class="pastille label--nav" for="{{ id }}">{{ valeur }}</label>
+                    {%- endfor -%}
+                  </div>
+                </fieldset>
+              {%- endfor -%}
+            {%- endunless -%}
+
+            <input type="hidden" name="id" value="{{ variante.id }}">
+
+            <div class="produit__ligne-achat">
+              <selecteur-quantite class="quantite">
+                <button type="button" data-pas="-1" aria-label="{{ 'produit.diminuer' | t }}">&minus;</button>
+                <label class="visuellement-cache" for="quantite-{{ section.id }}">{{ 'produit.quantite' | t }}</label>
+                <input
+                  id="quantite-{{ section.id }}"
+                  type="number"
+                  name="quantity"
+                  value="1"
+                  min="1"
+                  step="1"
+                  inputmode="numeric"
+                >
+                <button type="button" data-pas="1" aria-label="{{ 'produit.augmenter' | t }}">+</button>
+              </selecteur-quantite>
+
+              <button
+                type="submit"
+                class="bouton bouton--plein produit__ajouter"
+                data-bouton-achat
+                {% unless variante.available %}disabled{% endunless %}
+              >
+                {%- if variante.available -%}
+                  {{ 'produit.ajouter_au_panier' | t }}
+                {%- else -%}
+                  {{ 'produit.epuise' | t }}
+                {%- endif -%}
+              </button>
+            </div>
+
+            <p class="corps--s produit__erreur" data-erreur role="alert" hidden></p>
+          {%- endform -%}
+        </formulaire-panier>
+      </selecteur-variante>
+
+      {%- comment -%} Réassurance {%- endcomment -%}
+      <ul class="produit__reassurance mono--s">
+        {%- for bloc in section.blocks -%}
+          {%- if bloc.type == 'reassurance' -%}
+            <li {{ bloc.shopify_attributes }}>{{ bloc.settings.texte | escape }}</li>
+          {%- endif -%}
+        {%- endfor -%}
+      </ul>
+
+      {%- comment -%} Accordéons alimentés par métachamps {%- endcomment -%}
+      <div class="produit__accordeons">
+        {%- if matiere != blank or dimensions != blank -%}
+          <details class="accordeon">
+            <summary class="accordeon__entete">
+              {{ 'produit.details_dimensions' | t }}
+              <span class="accordeon__signe" aria-hidden="true">+</span>
+            </summary>
+            <div class="accordeon__corps">
+              {%- if matiere != blank -%}<p>{{ matiere }}</p>{%- endif -%}
+              {%- if dimensions != blank -%}<p>{{ dimensions }}</p>{%- endif -%}
+            </div>
+          </details>
+        {%- endif -%}
+
+        {%- if section.settings.page_livraison != blank -%}
+          <details class="accordeon">
+            <summary class="accordeon__entete">
+              {{ 'produit.livraison_retours' | t }}
+              <span class="accordeon__signe" aria-hidden="true">+</span>
+            </summary>
+            <div class="accordeon__corps">{{ pages[section.settings.page_livraison].content }}</div>
+          </details>
+        {%- endif -%}
+
+        {%- if entretien != blank -%}
+          <details class="accordeon">
+            <summary class="accordeon__entete">
+              {{ 'produit.entretien' | t }}
+              <span class="accordeon__signe" aria-hidden="true">+</span>
+            </summary>
+            <div class="accordeon__corps">{{ entretien }}</div>
+          </details>
+        {%- endif -%}
+      </div>
+    </div>
+  </div>
+</section>
+
+{% stylesheet %}
+  .produit__ariane { display: flex; gap: var(--e-2); padding-top: var(--e-6); color: var(--texte-tenu); }
+  .produit__corps {
+    display: grid;
+    grid-template-columns: 96px 1fr 470px;
+    gap: var(--e-7) var(--e-9);
+    padding-block: clamp(28px, 3vw, 44px) clamp(56px, 6vw, 92px);
+    align-items: start;
+  }
+  .produit__vignettes { display: flex; flex-direction: column; gap: var(--e-3); }
+  .produit__vignette { width: 96px; opacity: .55; transition: opacity var(--duree) var(--courbe); }
+  .produit__vignette:hover, .produit__vignette.est-actif { opacity: 1; }
+  .produit__vignette img { object-fit: cover; aspect-ratio: 4 / 5; }
+  .produit__infos { display: flex; flex-direction: column; gap: var(--e-5); }
+  .produit__univers { color: var(--accent); }
+  .produit__prix-ligne { display: flex; align-items: baseline; gap: var(--e-4); }
+  .produit__prix { font-size: 21px; }
+  .produit__description { max-width: 46ch; }
+  .produit__option { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--e-3); }
+  .produit__option-titre { color: var(--texte-tenu); }
+  .produit__option-valeur { color: var(--texte); }
+  .produit__pastilles { display: flex; flex-wrap: wrap; gap: var(--e-2); }
+  .pastille {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 14px;
+    border: 1px solid var(--filet);
+    font-size: 10.5px;
+    letter-spacing: var(--ls-nav);
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: border-color var(--duree) var(--courbe);
+  }
+  .produit__pastilles input:checked + .pastille { border-color: var(--accent); color: var(--accent); }
+  .produit__pastilles input:focus-visible + .pastille { outline: var(--focus); outline-offset: 2px; }
+  .produit__ligne-achat { display: flex; gap: var(--e-3); margin-top: var(--e-4); }
+  .quantite {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--filet);
+    padding: 0 var(--e-3);
+  }
+  .quantite button { width: 28px; height: 52px; color: var(--texte-tenu); }
+  .quantite input {
+    width: 34px;
+    height: 52px;
+    text-align: center;
+    background: transparent;
+    border: 0;
+    -moz-appearance: textfield;
+  }
+  .quantite input::-webkit-outer-spin-button,
+  .quantite input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .produit__ajouter { flex: 1; }
+  .produit__erreur { color: var(--c-alerte); }
+  .produit__reassurance {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--e-5);
+    padding-block: var(--e-5);
+    border-top: 1px solid var(--filet);
+  }
+  .produit__accordeons { margin-top: var(--e-2); }
+
+  @media (max-width: 1199px) {
+    .produit__corps { grid-template-columns: 96px 1fr 400px; gap: var(--e-6) var(--e-7); }
+  }
+  @media (max-width: 989px) {
+    .produit__corps { grid-template-columns: 1fr; }
+    /* Sur mobile les vignettes passent sous le visuel, en rail horizontal */
+    .produit__vignettes { order: 2; flex-direction: row; overflow-x: auto; }
+    .produit__galerie { order: 1; }
+    .produit__infos { order: 3; }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Fiche produit",
+  "settings": [
+    { "type": "page", "id": "page_livraison", "label": "Page « Livraison & retours »" }
+  ],
+  "blocks": [
+    {
+      "type": "reassurance",
+      "name": "Réassurance",
+      "limit": 3,
+      "settings": [{ "type": "text", "id": "texte", "label": "Texte" }]
+    }
+  ],
+  "default": {
+    "blocks": [
+      { "type": "reassurance", "settings": { "texte": "Livraison suivie" } },
+      { "type": "reassurance", "settings": { "texte": "Retours faciles" } },
+      { "type": "reassurance", "settings": { "texte": "Paiement sécurisé" } }
+    ]
+  }
+}
+{% endschema %}

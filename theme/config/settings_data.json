@@ -1,0 +1,25 @@
+{
+  "current": {
+    "couleur_fond": "#faf6ef",
+    "couleur_fond_alt": "#f0eae0",
+    "couleur_texte": "#1a1512",
+    "couleur_sombre": "#13100d",
+    "couleur_accent": "#a9803c",
+    "couleur_accent_clair": "#c49a55",
+    "couleur_nuit": "#15203a",
+    "largeur_page": 1440,
+    "bandeau_consentement": true
+  },
+  "presets": {
+    "Lumière rasante": {
+      "couleur_fond": "#faf6ef",
+      "couleur_fond_alt": "#f0eae0",
+      "couleur_texte": "#1a1512",
+      "couleur_sombre": "#13100d",
+      "couleur_accent": "#a9803c",
+      "couleur_accent_clair": "#c49a55",
+      "couleur_nuit": "#15203a",
+      "largeur_page": 1440
+    }
+  }
+}

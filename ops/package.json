@@ -1,0 +1,21 @@
+{
+  "name": "maison-ops",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Pipeline catalogue : valider, pousser et publier les produits par lot vers Shopify.",
+  "engines": { "node": ">=20" },
+  "comment": "Aucune dépendance runtime, volontairement. fetch, fs et le parseur JSON de Node suffisent : un pipeline qui a le droit d'écrire dans le catalogue est un pipeline dont on veut pouvoir auditer chaque ligne.",
+  "scripts": {
+    "valider": "node src/valider.mjs",
+    "metachamps": "node src/appliquer-metachamps.mjs",
+    "images": "node src/images.mjs",
+    "pousser": "node src/pousser.mjs",
+    "pousser:reel": "node src/pousser.mjs --appliquer",
+    "finaliser": "node src/finaliser.mjs",
+    "finaliser:reel": "node src/finaliser.mjs --appliquer",
+    "publier": "node src/publier.mjs",
+    "publier:reel": "node src/publier.mjs --appliquer",
+    "lot": "npm run valider && npm run images -- --appliquer && npm run pousser:reel && npm run finaliser:reel"
+  }
+}

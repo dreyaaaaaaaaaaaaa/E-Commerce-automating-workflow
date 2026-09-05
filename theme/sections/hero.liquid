@@ -1,0 +1,95 @@
+{%- comment -%}
+  sections/hero.liquid : bandeau d'ouverture.
+  Reprend le comp 1a : visuel plein écran 760px, voile dégradé ivoire,
+  surtitre en capitales espacées, titre Instrument Serif 78px sur deux
+  lignes dont la seconde en italique optique, chapô Jost 300.
+{%- endcomment -%}
+
+<section class="hero" data-section="{{ section.id }}">
+  {%- render 'media',
+    image: section.settings.image,
+    ratio: '3-2',
+    brief: section.settings.brief_photo,
+    sizes: '100vw',
+    priorite: true,
+    classe: 'hero__media'
+  -%}
+  <div class="voile-hero"></div>
+
+  <div class="hero__contenu">
+    {%- if section.settings.surtitre != blank -%}
+      <p class="label label--fin hero__surtitre">{{ section.settings.surtitre | escape }}</p>
+    {%- endif -%}
+
+    <h1 class="display hero__titre">
+      {{ section.settings.titre | escape }}
+      {%- if section.settings.titre_2 != blank -%}
+        <span class="hero__titre-2">{{ section.settings.titre_2 | escape }}</span>
+      {%- endif -%}
+    </h1>
+
+    {%- if section.settings.chapo != blank -%}
+      <p class="corps hero__chapo">{{ section.settings.chapo | escape }}</p>
+    {%- endif -%}
+
+    {%- if section.settings.cta_libelle != blank -%}
+      <a class="bouton bouton--plein" href="{{ section.settings.cta_url | default: routes.collections_url }}">
+        {{ section.settings.cta_libelle | escape }}
+      </a>
+    {%- endif -%}
+  </div>
+</section>
+
+{% stylesheet %}
+  .hero { position: relative; isolation: isolate; }
+  .hero__media { height: var(--hauteur-hero); }
+  .hero__media.media { aspect-ratio: auto; }
+  .hero__contenu {
+    position: absolute;
+    inset-block-end: 0;
+    inset-inline: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--e-6);
+    max-width: var(--largeur-max);
+    margin-inline: auto;
+    padding: 0 var(--gouttiere) clamp(40px, 5vw, 68px);
+  }
+  .hero__surtitre { color: var(--texte-doux); }
+  .hero__titre { max-width: 16ch; }
+  .hero__titre-2 { display: block; font-style: italic; }
+  .hero__chapo { max-width: 46ch; }
+  @media (max-width: 639px) {
+    .hero__contenu { gap: var(--e-5); }
+    .hero__titre { max-width: 12ch; }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Hero",
+  "tag": "section",
+  "settings": [
+    { "type": "image_picker", "id": "image", "label": "Visuel plein écran" },
+    {
+      "type": "text",
+      "id": "brief_photo",
+      "label": "Brief photo (affiché tant que le visuel manque)",
+      "default": "plein écran · table en bois, marbre et laiton, lumière rasante de fin de journée"
+    },
+    { "type": "text", "id": "surtitre", "label": "Surtitre", "default": "Art de la table & décoration" },
+    { "type": "text", "id": "titre", "label": "Titre", "default": "La table," },
+    { "type": "text", "id": "titre_2", "label": "Seconde ligne (italique)", "default": "comme un décor." },
+    {
+      "type": "textarea",
+      "id": "chapo",
+      "label": "Chapô",
+      "default": "Des pièces choisies pour la façon dont elles prennent la lumière. Réunies en univers, jamais en catalogue."
+    },
+    { "type": "text", "id": "cta_libelle", "label": "Libellé du bouton", "default": "Découvrir les univers" },
+    { "type": "url", "id": "cta_url", "label": "Lien du bouton" }
+  ],
+  "presets": [{ "name": "Hero" }]
+}
+{% endschema %}

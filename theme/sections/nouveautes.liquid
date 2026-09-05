@@ -1,0 +1,91 @@
+{%- comment -%}
+  sections/nouveautes.liquid : rail de nouveautés.
+  Alimenté par une collection (automatique, condition « ajouté il y a
+  moins de N jours ») : aucune sélection manuelle à maintenir.
+{%- endcomment -%}
+
+{%- liquid
+  assign col = section.settings.collection
+  assign nombre = section.settings.nombre | default: 4
+-%}
+
+<section class="section nouveautes" data-section="{{ section.id }}">
+  <div class="enveloppe">
+    <div class="entete-section filet-bas nouveautes__entete">
+      <div class="nouveautes__intitule">
+        <p class="mono">{{ section.settings.surtitre | escape }}</p>
+        <h2 class="titre-3">{{ section.settings.titre | escape }}</h2>
+      </div>
+      {%- if col != blank -%}
+        <a class="label label--nav lien-filet" href="{{ col.url }}">{{ 'general.voir_tout' | t }}</a>
+      {%- endif -%}
+    </div>
+
+    <div class="nouveautes__rail">
+      {%- if col.products.size > 0 -%}
+        {%- for produit in col.products limit: nombre -%}
+          {%- render 'carte-produit',
+            produit: produit,
+            index: forloop.index,
+            numerote: section.settings.numeroter,
+            sizes: '(min-width: 990px) 23vw, (min-width: 640px) 45vw, 80vw'
+          -%}
+        {%- endfor -%}
+      {%- else -%}
+        {%- comment -%}
+          Catalogue encore vide : on rend des cartes fantômes pour que la
+          page garde sa composition. La DA ne dépend pas des données.
+        {%- endcomment -%}
+        {%- for i in (1..nombre) -%}
+          <div class="carte" aria-hidden="true">
+            {%- render 'media', ratio: '4-5', brief: 'produit en situation' -%}
+            <span class="carte__titre">{{ 'general.nom_produit' | t }}</span>
+            <span class="carte__prix">00,00 &euro;</span>
+          </div>
+        {%- endfor -%}
+      {%- endif -%}
+    </div>
+  </div>
+</section>
+
+{% stylesheet %}
+  .nouveautes__entete { padding-bottom: var(--e-5); }
+  .nouveautes__intitule { display: flex; flex-direction: column; gap: var(--e-2); }
+  .nouveautes__rail {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--e-8) var(--e-7);
+    margin-top: var(--e-8);
+  }
+  @media (max-width: 989px) { .nouveautes__rail { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 639px) {
+    /* Défilement horizontal plutôt qu'une colonne : conserve le cadrage 4:5 */
+    .nouveautes__rail {
+      grid-auto-flow: column;
+      grid-auto-columns: 72vw;
+      grid-template-columns: none;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      margin-inline: calc(var(--gouttiere) * -1);
+      padding-inline: var(--gouttiere);
+      scrollbar-width: none;
+    }
+    .nouveautes__rail::-webkit-scrollbar { display: none; }
+    .nouveautes__rail > * { scroll-snap-align: start; }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Nouveautés",
+  "tag": "section",
+  "settings": [
+    { "type": "text", "id": "surtitre", "label": "Surtitre", "default": "Dernières pièces" },
+    { "type": "text", "id": "titre", "label": "Titre", "default": "Nouveautés" },
+    { "type": "collection", "id": "collection", "label": "Collection source" },
+    { "type": "range", "id": "nombre", "min": 2, "max": 8, "step": 1, "default": 4, "label": "Nombre de produits" },
+    { "type": "checkbox", "id": "numeroter", "default": false, "label": "Numéroter les pièces" }
+  ],
+  "presets": [{ "name": "Nouveautés" }]
+}
+{% endschema %}

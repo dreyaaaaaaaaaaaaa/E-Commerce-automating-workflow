@@ -1,0 +1,40 @@
+{%- comment -%}
+  snippets/carte-produit.liquid
+
+  Paramètres
+    produit  : objet product
+    index    : position dans la grille (pour la numérotation 01, 02, 03…)
+    sizes    : attribut sizes
+    numerote : true pour afficher le numéro d'ordre
+{%- endcomment -%}
+
+{%- liquid
+  assign sizes = sizes | default: '(min-width: 990px) 30vw, (min-width: 640px) 45vw, 90vw'
+  assign brief = produit.metafields.custom.brief_photo.value | default: 'produit en situation'
+-%}
+
+<a
+  class="carte"
+  href="{{ produit.url }}"
+  aria-label="{{ produit.title | escape }}"
+>
+  <div class="carte__media">
+    {%- render 'media',
+      image: produit.featured_media.preview_image,
+      ratio: '4-5',
+      brief: brief,
+      sizes: sizes,
+      alt: produit.featured_media.alt
+    -%}
+    {%- unless produit.available -%}
+      <span class="carte__badge">{{ 'produit.epuise' | t }}</span>
+    {%- endunless -%}
+  </div>
+
+  {%- if numerote and index -%}
+    <span class="carte__num">{{ index | prepend: '0' | slice: -2, 2 }}</span>
+  {%- endif -%}
+
+  <span class="carte__titre">{{ produit.title | escape }}</span>
+  <span class="carte__prix">{%- render 'prix', produit: produit -%}</span>
+</a>

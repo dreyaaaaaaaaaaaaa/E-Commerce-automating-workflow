@@ -1,0 +1,98 @@
+{%- comment -%}
+  sections/univers.liquid : les trois univers de l'accueil.
+
+  Un « univers » est une collection Shopify enrichie de métachamps
+  (numéro, chapô, brief photo). On ne duplique donc pas le contenu dans
+  la section : le texte vit avec la collection et suit partout : accueil,
+  page univers, fil d'Ariane produit.
+
+  Garde-fou DA : `max_blocks: 3`. La grille du comp est en trois colonnes ;
+  un quatrième univers casserait le rythme, l'éditeur ne peut pas l'ajouter.
+{%- endcomment -%}
+
+<section class="section univers" data-section="{{ section.id }}">
+  <div class="enveloppe">
+    <div class="entete-section filet-bas univers__entete">
+      <div class="univers__intitule">
+        <p class="mono">{{ section.settings.surtitre | escape }}</p>
+        <h2 class="titre-3">{{ section.settings.titre | escape }}</h2>
+      </div>
+      {%- if section.settings.lien_url != blank -%}
+        <a class="label label--nav lien-filet" href="{{ section.settings.lien_url }}">
+          {{ section.settings.lien_libelle | escape }}
+        </a>
+      {%- endif -%}
+    </div>
+
+    <div class="grille-3 univers__grille">
+      {%- for bloc in section.blocks -%}
+        {%- liquid
+          assign col = bloc.settings.collection
+          assign numero = col.metafields.custom.numero.value | default: forloop.index
+          assign chapo = col.metafields.custom.chapo.value | default: col.description
+          assign brief = col.metafields.custom.brief_photo.value | default: 'ambiance en situation'
+          assign visuel = col.metafields.custom.image_editoriale.value | default: col.image
+        -%}
+        <article class="univers__carte" {{ bloc.shopify_attributes }}>
+          <a href="{{ col.url | default: '#' }}" class="univers__lien">
+            {%- render 'media',
+              image: visuel,
+              ratio: '4-5',
+              brief: brief,
+              sizes: '(min-width: 990px) 30vw, (min-width: 640px) 45vw, 90vw'
+            -%}
+            <p class="mono univers__num">{{ numero | prepend: '0' | slice: -2, 2 }}</p>
+            <h3 class="titre-4">{{ col.title | default: bloc.settings.titre_secours | escape }}</h3>
+            {%- if chapo != blank -%}
+              <p class="corps--s univers__chapo">{{ chapo | strip_html | escape }}</p>
+            {%- endif -%}
+            <span class="label label--nav univers__cta">{{ 'general.decouvrir' | t }}</span>
+          </a>
+        </article>
+      {%- endfor -%}
+    </div>
+  </div>
+</section>
+
+{% stylesheet %}
+  .univers__entete { padding-bottom: var(--e-5); }
+  .univers__intitule { display: flex; flex-direction: column; gap: var(--e-2); }
+  .univers__grille { margin-top: var(--e-8); }
+  .univers__lien { display: flex; flex-direction: column; gap: var(--e-4); }
+  .univers__lien .media { transition: transform 640ms var(--courbe); }
+  .univers__lien:hover .media { transform: scale(1.015); }
+  .univers__num { margin-top: var(--e-2); }
+  .univers__chapo { max-width: 40ch; }
+  .univers__cta { color: var(--accent); margin-top: var(--e-1); }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Univers",
+  "tag": "section",
+  "max_blocks": 3,
+  "settings": [
+    { "type": "text", "id": "surtitre", "label": "Surtitre", "default": "Trois ambiances" },
+    { "type": "text", "id": "titre", "label": "Titre", "default": "Nos univers" },
+    { "type": "text", "id": "lien_libelle", "label": "Libellé du lien", "default": "Voir tout" },
+    { "type": "url", "id": "lien_url", "label": "Lien" }
+  ],
+  "blocks": [
+    {
+      "type": "univers",
+      "name": "Univers",
+      "limit": 3,
+      "settings": [
+        { "type": "collection", "id": "collection", "label": "Collection univers" },
+        { "type": "text", "id": "titre_secours", "label": "Titre de secours (si collection vide)" }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Univers",
+      "blocks": [{ "type": "univers" }, { "type": "univers" }, { "type": "univers" }]
+    }
+  ]
+}
+{% endschema %}

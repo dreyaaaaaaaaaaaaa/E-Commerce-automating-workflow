@@ -1,0 +1,14 @@
+node_modules/
+.DS_Store
+*.log
+
+# Jetons : jamais dans le dépôt.
+.env
+.env.*
+!.env.example
+
+# Rapports de lot : utiles localement, remontés comme artefacts en CI.
+ops/rapports/*.json
+
+# Le CLI Shopify écrit ici.
+.shopify/

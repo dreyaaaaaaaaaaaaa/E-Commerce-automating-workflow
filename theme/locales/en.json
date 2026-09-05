@@ -1,0 +1,87 @@
+{
+  "general": {
+    "accueil": "Home",
+    "recherche": "Search",
+    "panier": "Cart",
+    "menu": "Menu",
+    "decouvrir": "Discover",
+    "voir_tout": "View all",
+    "photo_a_venir": "Photo to come",
+    "nom_produit": "[Product name]",
+    "meta": {
+      "tags": "Tagged {{ tags }}",
+      "page": "Page {{ page }}"
+    }
+  },
+  "accessibilite": {
+    "aller_au_contenu": "Skip to content",
+    "nav_principale": "Main navigation",
+    "fil_ariane": "Breadcrumb"
+  },
+  "collection": {
+    "univers": "Collection",
+    "tout": "All",
+    "trier": "Sort ·",
+    "filtrer": "Filter",
+    "stylisme": "Styling",
+    "nombre_pieces": "Number of pieces",
+    "pieces": {
+      "one": "{{ count }} piece",
+      "other": "{{ count }} pieces"
+    },
+    "aucun_produit": "No pieces published in this collection yet.",
+    "pagination": "Pagination",
+    "precedent": "Previous",
+    "suivant": "Next",
+    "page_sur": "Page {{ courante }} / {{ total }}"
+  },
+  "produit": {
+    "reference": "Ref.",
+    "quantite": "Quantity",
+    "diminuer": "Decrease quantity",
+    "augmenter": "Increase quantity",
+    "ajouter_au_panier": "Add to cart",
+    "ajout_en_cours": "Adding…",
+    "ajoute": "Added to cart",
+    "erreur": "Something went wrong, please try again.",
+    "epuise": "Sold out",
+    "en_promotion": "On sale",
+    "a_partir_de": "From {{ prix }}",
+    "voir_visuel": "View image {{ index }}",
+    "details_dimensions": "Details & dimensions",
+    "livraison_retours": "Shipping & returns",
+    "entretien": "Care"
+  },
+  "panier": {
+    "titre": "Cart",
+    "compteur": {
+      "one": "{{ count }} piece",
+      "other": "{{ count }} pieces"
+    },
+    "vide": "Your cart is empty.",
+    "continuer": "Browse the pieces",
+    "sous_total": "Subtotal",
+    "taxes_livraison": "Taxes included. Shipping calculated at the next step.",
+    "mettre_a_jour": "Update",
+    "commander": "Check out",
+    "retirer": "Remove {{ titre }} from cart",
+    "retirer_court": "Remove"
+  },
+  "infolettre": {
+    "courriel": "Email address",
+    "placeholder": "you@example.com",
+    "envoyer": "Subscribe",
+    "merci": "Thank you : see you in your inbox.",
+    "rgpd": "One letter each season. One-click unsubscribe. No data resold."
+  },
+  "pied": {
+    "tous_droits": "All rights reserved",
+    "moyens_paiement": "Accepted payment methods"
+  },
+  "erreur": {
+    "code": "Error 404",
+    "titre": "This page no longer exists.",
+    "texte": "The piece may have left the catalogue, or the address has changed.",
+    "retour": "Back to home"
+  }
+}

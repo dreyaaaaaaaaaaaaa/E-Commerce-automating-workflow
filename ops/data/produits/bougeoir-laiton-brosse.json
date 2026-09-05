@@ -1,0 +1,38 @@
+{
+  "handle": "bougeoir-laiton-brosse",
+  "reference": "LA-2118",
+  "titre": "Bougeoir Rasant, laiton brossé",
+  "univers": "table-et-lumiere",
+  "marque": "Maison",
+  "type": "Bougeoir",
+  "etiquettes": ["laiton", "lumière", "table"],
+  "description": "<p>Un socle bas et large, une tige courte : la flamme reste à hauteur de nappe et la lumière file à l'horizontale. Le laiton est brossé puis laissé nu, il prendra sa patine au fil des dîners. Livré sans bougie.</p>",
+  "variantes": [
+    {
+      "sku": "LA-2118-NA",
+      "prix_centimes": 6500,
+      "options": { "Couleur": "Laiton nu" }
+    }
+  ],
+  "metachamps": {
+    "matiere": "Laiton massif brossé, non vernis. La patine se forme naturellement et peut être ravivée au chiffon.",
+    "dimensions": "Hauteur 9 cm · diamètre du socle 12 cm · pour bougie de 22 mm",
+    "entretien": "Essuyer avec un chiffon sec. Pour raviver l'éclat, un peu de jus de citron et de bicarbonate, puis rincer et sécher aussitôt. Ne pas passer au lave-vaisselle.",
+    "brief_photo": "détail laiton, ombre longue sur bois brut, lumière rasante"
+  },
+  "images": [
+    {
+      "fichier": "table-et-lumiere/bougeoir-rasant-01.jpg",
+      "alt": {
+        "fr": "Bougeoir en laiton brossé sur une table en bois, ombre longue",
+        "en": "Brushed brass candleholder on a wooden table, long shadow"
+      }
+    }
+  ],
+  "traductions": {
+    "en": {
+      "titre": "Rasant candleholder, brushed brass",
+      "description": "<p>A low, wide base and a short stem: the flame stays at tablecloth height and the light runs sideways. The brass is brushed then left bare : it will take on its patina over the course of dinners. Candle not included.</p>"
+    }
+  }
+}

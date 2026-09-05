@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "main": {
+      "type": "main-collection",
+      "settings": { "par_page": 12, "numeroter": true }
+    }
+  },
+  "order": ["main"]
+}

@@ -1,0 +1,46 @@
+/* Polices auto-hébergées.
+   Déposer les .woff2 dans theme/assets/ (licences : Instrument Serif et Jost
+   sont sous SIL Open Font License 1.1, l'auto-hébergement est autorisé).
+
+   Pourquoi ne pas passer par le font_picker de Shopify : ni Instrument Serif
+   ni Jost ne figurent dans la bibliothèque Shopify Fonts. Pourquoi ne pas
+   pointer fonts.googleapis.com : origin supplémentaire sur le chemin critique
+   + transfert d'IP visiteur vers Google (sujet RGPD documenté en UE). */
+
+@font-face {
+  font-family: 'Instrument Serif';
+  src: url('InstrumentSerif-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  /* Latin + Latin Extended-A : couvre FR et EN sans charger le cyrillique */
+  unicode-range: U+0000-00FF, U+0100-017F, U+2000-206F, U+20AC, U+2122;
+}
+
+@font-face {
+  font-family: 'Jost';
+  src: url('Jost-Variable.woff2') format('woff2-variations');
+  font-weight: 300 500;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0100-017F, U+2000-206F, U+20AC, U+2122;
+}
+
+/* Métriques d'ajustement : réduit le décalage de mise en page (CLS)
+   pendant le swap, la fallback occupant la même surface. */
+@font-face {
+  font-family: 'Jost fallback';
+  src: local('Segoe UI'), local('Helvetica Neue'), local('Arial');
+  size-adjust: 96%;
+  ascent-override: 92%;
+  descent-override: 24%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Instrument Serif fallback';
+  src: local('Georgia'), local('Times New Roman');
+  size-adjust: 104%;
+  ascent-override: 90%;
+  descent-override: 22%;
+  line-gap-override: 0%;
+}

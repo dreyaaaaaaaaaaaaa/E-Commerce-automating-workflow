@@ -1,0 +1,12 @@
+# Fins de ligne uniformes (LF) quelle que soit la plateforme qui clone,
+# edite ou pousse ce depot. Evite un diff de 500 lignes le jour ou
+# quelqu'un ouvre le projet depuis Windows sans ce reglage.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.woff2 binary
+*.gif binary
+*.ico binary

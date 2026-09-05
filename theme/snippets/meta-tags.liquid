@@ -1,0 +1,59 @@
+{%- comment -%}
+  snippets/meta-tags.liquid : Open Graph + JSON-LD.
+
+  Sécurité : tout ce qui vient d'une donnée éditable (titre produit,
+  description, métachamp) passe par `escape` ou `json`. Aucune sortie
+  brute dans un attribut ni dans un bloc <script>.
+{%- endcomment -%}
+
+<meta property="og:site_name" content="{{ shop.name | escape }}">
+<meta property="og:url" content="{{ canonical_url }}">
+<meta property="og:title" content="{{ page_title | escape }}">
+<meta property="og:type" content="{% if request.page_type == 'product' %}product{% elsif request.page_type == 'article' %}article{% else %}website{% endif %}">
+<meta property="og:description" content="{{ page_description | default: shop.description | default: shop.name | escape }}">
+
+{%- if request.page_type == 'product' and product.featured_media -%}
+  <meta property="og:image" content="https:{{ product.featured_media | image_url: width: 1200 }}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="1500">
+{%- elsif settings.image_partage -%}
+  <meta property="og:image" content="https:{{ settings.image_partage | image_url: width: 1200 }}">
+{%- endif -%}
+
+<meta name="twitter:card" content="summary_large_image">
+
+{%- comment -%} Données structurées : Product sur la fiche, Organization ailleurs. {%- endcomment -%}
+{%- if request.page_type == 'product' -%}
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org/",
+      "@type": "Product",
+      "name": {{ product.title | json }},
+      "description": {{ product.description | strip_html | truncate: 400 | json }},
+      "sku": {{ product.selected_or_first_available_variant.sku | json }},
+      "brand": { "@type": "Brand", "name": {{ product.vendor | json }} },
+      {%- if product.featured_media -%}
+        "image": [{{ product.featured_media | image_url: width: 1400 | prepend: 'https:' | json }}],
+      {%- endif -%}
+      "offers": {
+        "@type": "Offer",
+        "url": {{ request.origin | append: product.url | json }},
+        "priceCurrency": {{ cart.currency.iso_code | json }},
+        "price": {{ product.selected_or_first_available_variant.price | divided_by: 100.0 | json }},
+        "availability": "https://schema.org/{% if product.available %}InStock{% else %}OutOfStock{% endif %}"
+      }
+    }
+  </script>
+{%- else -%}
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org/",
+      "@type": "Organization",
+      "name": {{ shop.name | json }},
+      "url": {{ request.origin | json }}
+      {%- if settings.logo %},
+      "logo": {{ settings.logo | image_url: width: 512 | prepend: 'https:' | json }}
+      {%- endif %}
+    }
+  </script>
+{%- endif -%}

@@ -1,0 +1,155 @@
+{%- comment -%}
+  sections/pied.liquid : pied de page sur fond sombre (noir profond).
+  Contient les mentions obligatoires pour une vente en ligne en France :
+  mentions légales, CGV, droit de rétractation, médiateur.
+{%- endcomment -%}
+
+<footer class="section--sombre pied" data-section="{{ section.id }}">
+  <div class="enveloppe pied__haut">
+    <div class="pied__marque">
+      <p class="pied__wordmark">{{ shop.name }}</p>
+      {%- if section.settings.signature != blank -%}
+        <p class="corps--s pied__signature">{{ section.settings.signature | escape }}</p>
+      {%- endif -%}
+    </div>
+
+    {%- for bloc in section.blocks -%}
+      {%- case bloc.type -%}
+        {%- when 'menu' -%}
+          <nav class="pied__colonne" {{ bloc.shopify_attributes }}>
+            <p class="mono pied__titre-colonne">{{ bloc.settings.titre | escape }}</p>
+            <ul class="pied__liens label--nav">
+              {%- for lien in bloc.settings.menu.links -%}
+                <li><a class="lien-filet" href="{{ lien.url }}">{{ lien.title | escape }}</a></li>
+              {%- endfor -%}
+            </ul>
+          </nav>
+
+        {%- when 'infolettre' -%}
+          <div class="pied__colonne pied__colonne--large" {{ bloc.shopify_attributes }}>
+            <p class="mono pied__titre-colonne">{{ bloc.settings.titre | escape }}</p>
+            <p class="corps--s">{{ bloc.settings.texte | escape }}</p>
+            {%- form 'customer', class: 'pied__form' -%}
+              <input type="hidden" name="contact[tags]" value="infolettre">
+              <label class="visuellement-cache" for="courriel-infolettre">
+                {{ 'infolettre.courriel' | t }}
+              </label>
+              <input
+                id="courriel-infolettre"
+                type="email"
+                name="contact[email]"
+                autocomplete="email"
+                required
+                placeholder="{{ 'infolettre.placeholder' | t }}"
+              >
+              <button type="submit" class="label label--nav">{{ 'infolettre.envoyer' | t }}</button>
+              {%- if form.posted_successfully? -%}
+                <p class="corps--s pied__succes" role="status">{{ 'infolettre.merci' | t }}</p>
+              {%- endif -%}
+              {%- if form.errors -%}
+                <p class="corps--s pied__erreur" role="alert">{{ form.errors | default_errors }}</p>
+              {%- endif -%}
+            {%- endform -%}
+            <p class="mono--s pied__rgpd">{{ 'infolettre.rgpd' | t }}</p>
+          </div>
+      {%- endcase -%}
+    {%- endfor -%}
+  </div>
+
+  <div class="enveloppe pied__bas filet-haut">
+    <p class="mono--s">
+      &copy; {{ 'now' | date: '%Y' }} {{ shop.name }} &middot; {{ 'pied.tous_droits' | t }}
+    </p>
+    <p class="mono--s pied__legal">
+      {%- for lien in section.settings.menu_legal.links -%}
+        <a class="lien-filet" href="{{ lien.url }}">{{ lien.title | escape }}</a>
+        {%- unless forloop.last %} &middot; {% endunless -%}
+      {%- endfor -%}
+    </p>
+    {%- if section.settings.afficher_moyens_paiement -%}
+      <div class="pied__paiements" aria-label="{{ 'pied.moyens_paiement' | t }}">
+        {%- for type in shop.enabled_payment_types -%}
+          {{ type | payment_type_svg_tag: class: 'pied__paiement' }}
+        {%- endfor -%}
+      </div>
+    {%- endif -%}
+  </div>
+</footer>
+
+{% stylesheet %}
+  .pied { padding-top: clamp(48px, 5.5vw, 78px); }
+  .pied__haut {
+    display: grid;
+    grid-template-columns: 1.2fr repeat(2, .8fr) 1.4fr;
+    gap: var(--e-9);
+    padding-bottom: clamp(40px, 4.7vw, 68px);
+  }
+  .pied__wordmark { font-family: var(--f-serif); font-size: 25px; }
+  .pied__signature { max-width: 32ch; margin-top: var(--e-3); }
+  .pied__colonne { display: flex; flex-direction: column; gap: var(--e-4); }
+  .pied__titre-colonne { color: var(--texte-tenu); }
+  .pied__liens { display: flex; flex-direction: column; gap: var(--e-3); font-size: 11px; letter-spacing: var(--ls-nav); text-transform: uppercase; }
+  .pied__form { display: flex; gap: var(--e-3); align-items: stretch; margin-top: var(--e-2); }
+  .pied__form input {
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--filet-fort);
+    color: var(--texte);
+    padding: 10px 0;
+    font-weight: 300;
+  }
+  .pied__form input::placeholder { color: var(--texte-tenu); }
+  .pied__form button { white-space: nowrap; color: var(--accent-clair); }
+  .pied__rgpd { max-width: 42ch; }
+  .pied__succes { color: var(--accent-clair); }
+  .pied__erreur { color: var(--c-alerte-clair); }
+  .pied__bas {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--e-5);
+    padding-block: var(--e-6);
+  }
+  .pied__legal { display: flex; flex-wrap: wrap; gap: var(--e-1); }
+  .pied__paiements { display: flex; gap: var(--e-2); }
+  .pied__paiement { height: 20px; width: auto; opacity: .7; }
+  @media (max-width: 989px) {
+    .pied__haut { grid-template-columns: 1fr 1fr; }
+    .pied__colonne--large { grid-column: 1 / -1; }
+  }
+  @media (max-width: 639px) { .pied__haut { grid-template-columns: 1fr; gap: var(--e-8); } }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Pied de page",
+  "settings": [
+    { "type": "textarea", "id": "signature", "label": "Signature", "default": "Pièces choisies pour la façon dont elles prennent la lumière." },
+    { "type": "link_list", "id": "menu_legal", "label": "Menu légal (mentions, CGV, rétractation, médiateur)" },
+    { "type": "checkbox", "id": "afficher_moyens_paiement", "default": true, "label": "Afficher les moyens de paiement" }
+  ],
+  "blocks": [
+    {
+      "type": "menu",
+      "name": "Colonne de liens",
+      "settings": [
+        { "type": "text", "id": "titre", "label": "Titre de colonne" },
+        { "type": "link_list", "id": "menu", "label": "Menu" }
+      ]
+    },
+    {
+      "type": "infolettre",
+      "name": "Infolettre",
+      "limit": 1,
+      "settings": [
+        { "type": "text", "id": "titre", "label": "Titre", "default": "Le journal" },
+        { "type": "textarea", "id": "texte", "label": "Texte", "default": "Une lettre par saison : nouvelles pièces, tables dressées, coulisses de stylisme." }
+      ]
+    }
+  ],
+  "enabled_on": { "groups": ["footer"] }
+}
+{% endschema %}

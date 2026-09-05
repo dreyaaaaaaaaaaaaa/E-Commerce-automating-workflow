@@ -1,0 +1,25 @@
+{%- comment -%}
+  snippets/prix.liquid : affichage prix, compatible Shopify Markets.
+  `money` respecte la devise du marché courant ; ne jamais formater à la main.
+{%- endcomment -%}
+
+{%- liquid
+  assign cible = produit | default: variante
+  if variante
+    assign prix = variante.price
+    assign compare = variante.compare_at_price
+  else
+    assign prix = produit.price
+    assign compare = produit.compare_at_price
+  endif
+-%}
+
+{%- if produit and produit.price_varies -%}
+  <span class="prix">{{ 'produit.a_partir_de' | t: prix: produit.price_min | money }}</span>
+{%- else -%}
+  <span class="prix{% if compare > prix %} prix--solde{% endif %}">{{ prix | money }}</span>
+  {%- if compare > prix -%}
+    <s class="prix__barre">{{ compare | money }}</s>
+    <span class="visuellement-cache">{{ 'produit.en_promotion' | t }}</span>
+  {%- endif -%}
+{%- endif -%}

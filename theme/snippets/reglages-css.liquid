@@ -1,0 +1,22 @@
+{%- comment -%}
+  snippets/reglages-css.liquid
+
+  Seul endroit du thème où un réglage marchand devient une couleur.
+  Les valeurs par défaut sont celles de la DA ; le schéma de réglages
+  (config/settings_schema.json) ne propose que ces rôles, jamais un
+  color_picker libre par section. Résultat : un éditeur ne peut pas
+  introduire une couleur hors palette sans passer par le code.
+{%- endcomment -%}
+
+<style>
+  :root {
+    --c-ivoire: {{ settings.couleur_fond | default: '#faf6ef' }};
+    --c-ivoire-2: {{ settings.couleur_fond_alt | default: '#f0eae0' }};
+    --c-encre: {{ settings.couleur_texte | default: '#1a1512' }};
+    --c-encre-fonce: {{ settings.couleur_sombre | default: '#13100d' }};
+    --c-laiton: {{ settings.couleur_accent_clair | default: '#c49a55' }};
+    --c-laiton-fonce: {{ settings.couleur_accent | default: '#a9803c' }};
+    --c-nuit: {{ settings.couleur_nuit | default: '#15203a' }};
+    --largeur-max: {{ settings.largeur_page | default: 1440 }}px;
+  }
+</style>

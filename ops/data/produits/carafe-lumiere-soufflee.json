@@ -1,0 +1,50 @@
+{
+  "handle": "carafe-lumiere-soufflee",
+  "reference": "VE-1042",
+  "titre": "Carafe Lumière, verre soufflé",
+  "univers": "table-et-lumiere",
+  "marque": "Maison",
+  "type": "Carafe",
+  "etiquettes": ["verre", "soufflé", "table"],
+  "description": "<p>Soufflée à la canne dans un atelier normand, cette carafe garde les irrégularités du geste. Le verre à peine teinté attrape la lumière de fin de journée et la rend au reste de la table. Pour l'eau comme pour un vin léger, servi frais.</p>",
+  "variantes": [
+    {
+      "sku": "VE-1042-IV",
+      "prix_centimes": 8900,
+      "options": { "Couleur": "Ivoire" }
+    },
+    {
+      "sku": "VE-1042-FU",
+      "prix_centimes": 8900,
+      "options": { "Couleur": "Fumé" }
+    }
+  ],
+  "metachamps": {
+    "matiere": "Verre soufflé bouche, non teinté dans la masse. Bulles et variations d'épaisseur inhérentes au soufflage.",
+    "dimensions": "Hauteur 26 cm · diamètre 11 cm · contenance 1,1 L",
+    "entretien": "Lavage à la main à l'eau tiède, séchage immédiat avec un linge doux pour éviter les traces. Ne pas passer au lave-vaisselle ni au congélateur.",
+    "brief_photo": "carafe sur nappe de lin, contre-jour de fin de journée, ombre longue"
+  },
+  "images": [
+    {
+      "fichier": "table-et-lumiere/carafe-lumiere-01.jpg",
+      "alt": {
+        "fr": "Carafe en verre soufflé posée sur une nappe de lin, à contre-jour",
+        "en": "Hand-blown glass carafe on a linen tablecloth, backlit"
+      }
+    },
+    {
+      "fichier": "table-et-lumiere/carafe-lumiere-02.jpg",
+      "alt": {
+        "fr": "Détail du col de la carafe et des bulles du verre soufflé",
+        "en": "Close-up of the carafe neck and the bubbles in the blown glass"
+      }
+    }
+  ],
+  "traductions": {
+    "en": {
+      "titre": "Lumière carafe, hand-blown glass",
+      "description": "<p>Blown by hand in a Normandy workshop, this carafe keeps the irregularities of the gesture. The barely tinted glass catches the late-afternoon light and returns it to the rest of the table. For water, or a light wine served cool.</p>"
+    }
+  }
+}

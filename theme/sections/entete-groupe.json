@@ -1,0 +1,16 @@
+{
+  "name": "En-tête",
+  "type": "header",
+  "sections": {
+    "entete": {
+      "type": "entete",
+      "settings": {
+        "menu": "main-menu",
+        "selecteur_langue": true,
+        "superposer_accueil": true,
+        "largeur_logo": 160
+      }
+    }
+  },
+  "order": ["entete"]
+}

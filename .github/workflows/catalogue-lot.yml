@@ -1,0 +1,105 @@
+name: Catalogue — pousser le lot
+
+# Déclenchement manuel uniquement. Écrire dans un catalogue de production
+# n'est pas un effet de bord d'un `git push` : c'est une décision, prise
+# par une personne, sur un diff qu'elle a lu.
+on:
+  workflow_dispatch:
+    inputs:
+      etape:
+        description: 'Étape du lot'
+        required: true
+        default: 'simulation'
+        type: choice
+        options:
+          - simulation        # diff seul, aucune écriture
+          - ecrire            # images + productSet, tout en DRAFT
+          - finaliser         # univers + traductions EN
+          - publier           # bascule ACTIVE + canal Boutique en ligne
+      confirmation:
+        description: 'Taper le nom de la boutique pour confirmer (ex. maison.myshopify.com)'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+# Shopify n'autorise qu'une opération d'écriture en masse à la fois par
+# boutique. Ce verrou évite qu'un second lancement ne parte en erreur.
+concurrency:
+  group: catalogue-lot-production
+  cancel-in-progress: false
+
+jobs:
+  lot:
+    name: ${{ inputs.etape }}
+    runs-on: ubuntu-latest
+
+    # L'environnement `boutique-ecriture` porte le jeton en écriture ET la
+    # règle de relecture obligatoire : GitHub met le job en attente jusqu'à
+    # approbation par un reviewer déclaré. C'est le point de contrôle humain.
+    environment:
+      name: ${{ inputs.etape == 'simulation' && 'boutique-lecture' || 'boutique-ecriture' }}
+
+    env:
+      SHOPIFY_SHOP: ${{ vars.SHOPIFY_SHOP }}
+      SHOPIFY_ADMIN_TOKEN: ${{ secrets.SHOPIFY_ADMIN_TOKEN }}
+      SHOPIFY_API_VERSION: '2025-07'
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: '20'
+
+      - name: Vérifier la confirmation
+        if: inputs.etape != 'simulation'
+        run: |
+          if [ "${{ inputs.confirmation }}" != "${{ vars.SHOPIFY_SHOP }}" ]; then
+            echo "Confirmation absente ou incorrecte. Attendu : ${{ vars.SHOPIFY_SHOP }}"
+            exit 1
+          fi
+
+      # Toujours revalider dans le job, même si la PR l'a déjà fait :
+      # la branche a pu bouger entre la relecture et le lancement.
+      - name: Conformité DA
+        working-directory: ops
+        run: node src/valider.mjs
+
+      - name: Simulation
+        if: inputs.etape == 'simulation'
+        working-directory: ops
+        run: node src/pousser.mjs
+
+      - name: Téléverser les visuels
+        if: inputs.etape == 'ecrire'
+        working-directory: ops
+        run: node src/images.mjs --appliquer
+
+      - name: Écrire les produits (DRAFT)
+        if: inputs.etape == 'ecrire'
+        working-directory: ops
+        run: node src/pousser.mjs --appliquer
+
+      - name: Rattacher aux univers et traduire
+        if: inputs.etape == 'finaliser'
+        working-directory: ops
+        run: node src/finaliser.mjs --appliquer
+
+      - name: Publier le lot
+        if: inputs.etape == 'publier'
+        working-directory: ops
+        run: node src/publier.mjs --appliquer
+
+      # Le manifeste d'images change à chaque téléversement : il doit
+      # revenir dans le dépôt, sinon le prochain lot re-téléverse tout.
+      - name: Remonter le manifeste et les rapports
+        if: always()
+        uses: actions/upload-artifact@6f51ac03b9356f520e9adb1b1b7802705f340c2b # v4.5.0
+        with:
+          name: lot-${{ inputs.etape }}-${{ github.run_id }}
+          path: |
+            ops/data/manifeste-images.json
+            ops/rapports/**
+          retention-days: 90
+          if-no-files-found: warn

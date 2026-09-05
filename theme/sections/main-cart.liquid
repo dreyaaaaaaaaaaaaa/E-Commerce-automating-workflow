@@ -1,0 +1,128 @@
+{%- comment -%}
+  sections/main-cart.liquid : panier.
+
+  Formulaire natif `cart` : la validation et le calcul restent côté
+  Shopify. Le bouton de paiement pointe vers le checkout Shopify : on ne
+  manipule à aucun moment de données de paiement dans le thème, ce qui
+  garde la conformité PCI intégralement du côté de Shopify.
+{%- endcomment -%}
+
+<section class="enveloppe panier" data-section="{{ section.id }}">
+  <header class="panier__entete">
+    <p class="mono">{{ 'panier.compteur' | t: count: cart.item_count }}</p>
+    <h1 class="titre-1">{{ 'panier.titre' | t }}</h1>
+  </header>
+
+  {%- if cart.item_count == 0 -%}
+    <div class="panier__vide">
+      <p class="corps">{{ 'panier.vide' | t }}</p>
+      <a class="bouton bouton--ligne" href="{{ routes.all_products_collection_url }}">
+        {{ 'panier.continuer' | t }}
+      </a>
+    </div>
+  {%- else -%}
+    {%- form 'cart', cart, class: 'panier__form' -%}
+      <ul class="panier__lignes">
+        {%- for ligne in cart.items -%}
+          <li class="panier__ligne filet-bas">
+            <a class="panier__ligne-media" href="{{ ligne.url }}" tabindex="-1" aria-hidden="true">
+              {%- render 'media', image: ligne.image, ratio: '4-5', sizes: '120px' -%}
+            </a>
+
+            <div class="panier__ligne-infos">
+              <a class="carte__titre" href="{{ ligne.url }}">{{ ligne.product.title }}</a>
+              {%- unless ligne.variant.title contains 'Default' -%}
+                <p class="mono--s">{{ ligne.variant.title }}</p>
+              {%- endunless -%}
+              {%- if ligne.selling_plan_allocation -%}
+                <p class="mono--s">{{ ligne.selling_plan_allocation.selling_plan.name }}</p>
+              {%- endif -%}
+            </div>
+
+            <selecteur-quantite class="quantite">
+              <button type="button" data-pas="-1" aria-label="{{ 'produit.diminuer' | t }}">&minus;</button>
+              <label class="visuellement-cache" for="quantite-{{ ligne.index | plus: 1 }}">
+                {{ 'produit.quantite' | t }}
+              </label>
+              <input
+                id="quantite-{{ ligne.index | plus: 1 }}"
+                type="number"
+                name="updates[]"
+                value="{{ ligne.quantity }}"
+                min="0"
+                inputmode="numeric"
+              >
+              <button type="button" data-pas="1" aria-label="{{ 'produit.augmenter' | t }}">+</button>
+            </selecteur-quantite>
+
+            <p class="panier__ligne-prix">{{ ligne.final_line_price | money }}</p>
+
+            <a
+              class="panier__retirer label--nav"
+              href="{{ ligne.url_to_remove }}"
+              aria-label="{{ 'panier.retirer' | t: titre: ligne.product.title }}"
+            >{{ 'panier.retirer_court' | t }}</a>
+          </li>
+        {%- endfor -%}
+      </ul>
+
+      <footer class="panier__pied">
+        <div class="panier__totaux">
+          <div class="panier__total">
+            <span class="label label--nav">{{ 'panier.sous_total' | t }}</span>
+            <span class="produit__prix">{{ cart.total_price | money }}</span>
+          </div>
+          <p class="mono--s panier__mention">{{ 'panier.taxes_livraison' | t }}</p>
+        </div>
+
+        <div class="panier__actions">
+          <button type="submit" name="update" class="bouton bouton--ligne">
+            {{ 'panier.mettre_a_jour' | t }}
+          </button>
+          <button type="submit" name="checkout" class="bouton bouton--plein">
+            {{ 'panier.commander' | t }}
+          </button>
+        </div>
+      </footer>
+    {%- endform -%}
+  {%- endif -%}
+</section>
+
+{% stylesheet %}
+  .panier { padding-block: clamp(40px, 5vw, 68px) clamp(56px, 6vw, 92px); }
+  .panier__entete { display: flex; flex-direction: column; gap: var(--e-2); margin-bottom: var(--e-8); }
+  .panier__vide { display: flex; flex-direction: column; align-items: flex-start; gap: var(--e-6); padding-block: var(--e-9); }
+  .panier__ligne {
+    display: grid;
+    grid-template-columns: 96px 1fr auto auto auto;
+    align-items: center;
+    gap: var(--e-6);
+    padding-block: var(--e-6);
+  }
+  .panier__ligne-media { width: 96px; }
+  .panier__ligne-infos { display: flex; flex-direction: column; gap: var(--e-1); }
+  .panier__ligne-prix { font-size: 14px; }
+  .panier__retirer { font-size: 10px; letter-spacing: var(--ls-nav); text-transform: uppercase; color: var(--texte-tenu); }
+  .panier__retirer:hover { color: var(--accent); }
+  .panier__pied {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--e-7);
+    padding-top: var(--e-8);
+  }
+  .panier__totaux { display: flex; flex-direction: column; gap: var(--e-2); }
+  .panier__total { display: flex; align-items: baseline; gap: var(--e-5); }
+  .panier__mention { color: var(--texte-tenu); }
+  .panier__actions { display: flex; gap: var(--e-3); }
+  @media (max-width: 749px) {
+    .panier__ligne { grid-template-columns: 80px 1fr; grid-template-areas: 'media infos' 'media qte' 'prix retirer'; }
+    .panier__actions { width: 100%; }
+    .panier__actions .bouton { flex: 1; }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{ "name": "Panier" }
+{% endschema %}

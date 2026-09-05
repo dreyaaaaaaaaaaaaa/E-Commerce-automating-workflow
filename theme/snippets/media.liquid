@@ -1,0 +1,62 @@
+{%- comment -%}
+  snippets/media.liquid : brique image unique du thème.
+
+  Rôle : il n'existe qu'UN chemin pour afficher une image. Toutes les sections
+  passent par ici, donc le ratio, le srcset, le lazy-loading et le placeholder
+  « PHOTO À VENIR » sont garantis identiques partout. C'est le verrou qui
+  empêche la DA de se déliter quand on ajoute des gabarits.
+
+  Paramètres
+    image     : objet image Shopify (peut être blank)
+    ratio     : '4-5' (produit) | '4-3' (éditorial) | '1-1' | '3-2'
+    brief     : texte de brief photo affiché dans le placeholder
+    sizes     : attribut sizes CSS
+    priorite  : true pour la première image visible (hero, image produit 1)
+    alt       : surcharge du alt ; sinon image.alt
+    classe    : classes additionnelles
+{%- endcomment -%}
+
+{%- liquid
+  assign ratio = ratio | default: '4-5'
+  assign sizes = sizes | default: '(min-width: 990px) 33vw, 100vw'
+  assign brief = brief | default: ''
+  assign chargement = 'lazy'
+  assign fetch = 'auto'
+  if priorite
+    assign chargement = 'eager'
+    assign fetch = 'high'
+  endif
+-%}
+
+<div class="media media--{{ ratio }} {{ classe }}">
+  {%- if image != blank -%}
+    {%- comment -%}
+      Largeurs alignées sur les colonnes réelles du design (1440/3 = 470,
+      hero 1440, produit 560). Shopify sert AVIF/WebP automatiquement.
+    {%- endcomment -%}
+    <img
+      src="{{ image | image_url: width: 700 }}"
+      srcset="
+        {{ image | image_url: width: 360 }} 360w,
+        {{ image | image_url: width: 540 }} 540w,
+        {{ image | image_url: width: 720 }} 720w,
+        {{ image | image_url: width: 960 }} 960w,
+        {{ image | image_url: width: 1400 }} 1400w,
+        {{ image | image_url: width: 1880 }} 1880w"
+      sizes="{{ sizes }}"
+      width="{{ image.width }}"
+      height="{{ image.height }}"
+      alt="{{ alt | default: image.alt | escape }}"
+      loading="{{ chargement }}"
+      fetchpriority="{{ fetch }}"
+      decoding="async"
+    >
+  {%- else -%}
+    <div class="placeholder" aria-hidden="true">
+      <span class="placeholder__titre">{{ 'general.photo_a_venir' | t }}</span>
+      {%- if brief != blank -%}
+        <span class="placeholder__brief">{{ brief | escape }}</span>
+      {%- endif -%}
+    </div>
+  {%- endif -%}
+</div>

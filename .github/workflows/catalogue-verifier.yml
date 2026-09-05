@@ -1,0 +1,65 @@
+name: Catalogue — vérifier
+
+# Se déclenche sur toute PR touchant le catalogue source.
+# Volontairement `pull_request` et non `pull_request_target` : une PR venant
+# d'un fork ne doit jamais s'exécuter avec accès aux secrets de la boutique.
+on:
+  pull_request:
+    paths:
+      - 'ops/data/**'
+      - 'ops/src/**'
+      - 'ops/schema/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: catalogue-verifier-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  valider:
+    name: Conformité DA (hors ligne)
+    runs-on: ubuntu-latest
+    steps:
+      # Épingler par SHA plutôt que par tag : un tag est mutable, un SHA non.
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: '20'
+
+      # Aucune dépendance runtime : pas de `npm ci`, donc pas de surface
+      # d'attaque via un paquet transitif dans un job qui lit le catalogue.
+      - name: Valider le catalogue
+        working-directory: ops
+        run: node src/valider.mjs
+
+  diff:
+    name: Diff avec la boutique (lecture seule)
+    # Ne tourne pas pour les PR issues d'un fork : pas d'accès aux secrets.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    needs: valider
+    environment: boutique-lecture   # jeton en lecture seule, scopes read_products
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: '20'
+
+      - name: Simulation (aucune écriture)
+        working-directory: ops
+        env:
+          SHOPIFY_SHOP: ${{ vars.SHOPIFY_SHOP }}
+          SHOPIFY_ADMIN_TOKEN: ${{ secrets.SHOPIFY_ADMIN_TOKEN_LECTURE }}
+        run: node src/pousser.mjs | tee ../diff.txt
+
+      - name: Publier le diff en résumé de job
+        if: always()
+        run: |
+          echo '## Diff catalogue' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cat diff.txt >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

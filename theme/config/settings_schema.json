@@ -1,0 +1,66 @@
+[
+  {
+    "name": "theme_info",
+    "theme_name": "Maison : Lumière rasante",
+    "theme_version": "0.1.0",
+    "theme_author": "Atelier",
+    "theme_documentation_url": "https://example.com/docs",
+    "theme_support_url": "https://example.com/support"
+  },
+  {
+    "name": "Direction artistique",
+    "settings": [
+      {
+        "type": "paragraph",
+        "content": "Ces valeurs sont la DA validée. Les modifier change l'ensemble du site. Toute couleur hors de cette palette doit passer par une revue design."
+      },
+      { "type": "header", "content": "Palette" },
+      { "type": "color", "id": "couleur_fond", "label": "Ivoire : fond de page", "default": "#faf6ef" },
+      { "type": "color", "id": "couleur_fond_alt", "label": "Ivoire secondaire", "default": "#f0eae0" },
+      { "type": "color", "id": "couleur_texte", "label": "Encre : noir chaud", "default": "#1a1512" },
+      { "type": "color", "id": "couleur_sombre", "label": "Noir profond : fonds sombres", "default": "#13100d" },
+      { "type": "color", "id": "couleur_accent", "label": "Laiton : liens et boutons", "default": "#a9803c" },
+      { "type": "color", "id": "couleur_accent_clair", "label": "Laiton clair : filets", "default": "#c49a55" },
+      { "type": "color", "id": "couleur_nuit", "label": "Bleu nuit : accent", "default": "#15203a" },
+      { "type": "header", "content": "Mise en page" },
+      {
+        "type": "range",
+        "id": "largeur_page",
+        "min": 1200,
+        "max": 1600,
+        "step": 40,
+        "unit": "px",
+        "default": 1440,
+        "label": "Largeur maximale"
+      },
+      {
+        "type": "paragraph",
+        "content": "Les polices (Instrument Serif, Jost) et l'échelle typographique sont figées dans le code : assets/base.css. Ce n'est pas un oubli : c'est le verrou qui empêche la DA de dériver."
+      }
+    ]
+  },
+  {
+    "name": "Marque",
+    "settings": [
+      { "type": "image_picker", "id": "logo", "label": "Logo" },
+      { "type": "image_picker", "id": "favicon", "label": "Favicon (512×512 min.)" },
+      { "type": "image_picker", "id": "image_partage", "label": "Image de partage par défaut (1200×630)" }
+    ]
+  },
+  {
+    "name": "Confidentialité",
+    "settings": [
+      {
+        "type": "paragraph",
+        "content": "Aucun script tiers n'est autorisé dans le thème. Les outils de mesure passent par les Pixels personnalisés Shopify, qui respectent nativement le consentement visiteur."
+      },
+      {
+        "type": "checkbox",
+        "id": "bandeau_consentement",
+        "default": true,
+        "label": "Afficher le bandeau de consentement (requis en UE)"
+      },
+      { "type": "page", "id": "page_confidentialite", "label": "Page « Politique de confidentialité »" }
+    ]
+  }
+]

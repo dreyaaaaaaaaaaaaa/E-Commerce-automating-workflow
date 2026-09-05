@@ -1,0 +1,15 @@
+{
+  "sections": {
+    "main": {
+      "type": "main-product",
+      "blocks": {
+        "r1": { "type": "reassurance", "settings": { "texte": "Livraison suivie" } },
+        "r2": { "type": "reassurance", "settings": { "texte": "Retours faciles" } },
+        "r3": { "type": "reassurance", "settings": { "texte": "Paiement sécurisé" } }
+      },
+      "block_order": ["r1", "r2", "r3"],
+      "settings": {}
+    }
+  },
+  "order": ["main"]
+}

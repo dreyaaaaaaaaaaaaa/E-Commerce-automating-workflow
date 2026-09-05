@@ -1,0 +1,186 @@
+{%- comment -%}
+  sections/main-collection.liquid : page univers.
+
+  Filtres et tri reposent sur `collection.filters`, alimenté par
+  l'app native Search & Discovery. Les liens de filtre restent de
+  vrais liens (progressive enhancement) : la page fonctionne sans JS,
+  et Shopify rend la section côté serveur pour la mise à jour rapide.
+{%- endcomment -%}
+
+{%- liquid
+  assign numero = collection.metafields.custom.numero.value
+  assign chapo = collection.metafields.custom.chapo.value | default: collection.description
+  assign stylisme = collection.metafields.custom.stylisme.value
+  assign visuel = collection.metafields.custom.image_editoriale.value | default: collection.image
+  assign brief = collection.metafields.custom.brief_photo.value | default: 'plan large éditorial de l ambiance · 4:3'
+-%}
+
+<section class="univers-page" data-section="{{ section.id }}">
+  <div class="enveloppe univers-page__entete">
+    <div class="univers-page__texte">
+      {%- if numero -%}
+        <p class="mono">{{ 'collection.univers' | t }} {{ numero | prepend: '0' | slice: -2, 2 }}</p>
+      {%- endif -%}
+      <h1 class="titre-1">{{ collection.title }}</h1>
+      {%- if chapo != blank -%}
+        <p class="corps--l univers-page__chapo">{{ chapo | strip_html }}</p>
+      {%- endif -%}
+      <dl class="univers-page__meta label label--nav">
+        <div>
+          <dt class="visuellement-cache">{{ 'collection.nombre_pieces' | t }}</dt>
+          <dd>{{ 'collection.pieces' | t: count: collection.products_count }}</dd>
+        </div>
+        {%- if stylisme != blank -%}
+          <div>
+            <dt class="visuellement-cache">{{ 'collection.stylisme' | t }}</dt>
+            <dd>{{ stylisme | escape }}</dd>
+          </div>
+        {%- endif -%}
+      </dl>
+    </div>
+
+    <div class="univers-page__visuel">
+      {%- render 'media',
+        image: visuel,
+        ratio: '4-3',
+        brief: brief,
+        sizes: '(min-width: 990px) 42vw, 100vw',
+        priorite: true
+      -%}
+    </div>
+  </div>
+
+  {%- comment -%} Barre de filtres + tri {%- endcomment -%}
+  <div class="enveloppe">
+    <form
+      class="univers-page__barre filet-haut filet-bas"
+      id="filtres-collection"
+      method="get"
+    >
+      <div class="univers-page__filtres label label--nav" role="group" aria-label="{{ 'collection.filtrer' | t }}">
+        <a
+          class="puce{% if current_tags == blank and collection.current_type == blank %} est-actif{% endif %}"
+          href="{{ collection.url }}"
+        >{{ 'collection.tout' | t }}</a>
+
+        {%- for filtre in collection.filters -%}
+          {%- if filtre.type == 'list' -%}
+            {%- for valeur in filtre.values -%}
+              <a
+                class="puce{% if valeur.active %} est-actif{% endif %}"
+                href="{{ valeur.url_to_add | default: valeur.url_to_remove }}"
+                {% if valeur.count == 0 and valeur.active == false %}aria-disabled="true"{% endif %}
+              >{{ valeur.label | escape }}</a>
+            {%- endfor -%}
+          {%- endif -%}
+        {%- endfor -%}
+      </div>
+
+      <label class="univers-page__tri label label--nav">
+        <span>{{ 'collection.trier' | t }}</span>
+        <select name="sort_by" onchange="this.form.submit()">
+          {%- for option in collection.sort_options -%}
+            <option
+              value="{{ option.value }}"
+              {% if option.value == collection.sort_by %}selected{% endif %}
+            >{{ option.name | escape }}</option>
+          {%- endfor -%}
+        </select>
+      </label>
+    </form>
+  </div>
+
+  {%- comment -%} Grille produits {%- endcomment -%}
+  <div class="enveloppe univers-page__grille-zone">
+    {%- paginate collection.products by section.settings.par_page -%}
+      {%- if collection.products.size > 0 -%}
+        <div class="grille-3">
+          {%- for produit in collection.products -%}
+            {%- render 'carte-produit',
+              produit: produit,
+              index: forloop.index,
+              numerote: section.settings.numeroter,
+              sizes: '(min-width: 990px) 30vw, (min-width: 640px) 45vw, 90vw'
+            -%}
+          {%- endfor -%}
+        </div>
+
+        {%- if paginate.pages > 1 -%}
+          <nav class="pagination label label--nav" aria-label="{{ 'collection.pagination' | t }}">
+            {%- if paginate.previous -%}
+              <a class="lien-filet" href="{{ paginate.previous.url }}">{{ 'collection.precedent' | t }}</a>
+            {%- endif -%}
+            <span class="mono">
+              {{ 'collection.page_sur' | t: courante: paginate.current_page, total: paginate.pages }}
+            </span>
+            {%- if paginate.next -%}
+              <a class="lien-filet" href="{{ paginate.next.url }}">{{ 'collection.suivant' | t }}</a>
+            {%- endif -%}
+          </nav>
+        {%- endif -%}
+      {%- else -%}
+        <p class="corps univers-page__vide">{{ 'collection.aucun_produit' | t }}</p>
+      {%- endif -%}
+    {%- endpaginate -%}
+  </div>
+</section>
+
+{% stylesheet %}
+  .univers-page__entete {
+    display: grid;
+    grid-template-columns: 1fr 560px;
+    gap: var(--e-9);
+    align-items: end;
+    padding-top: clamp(40px, 5.4vw, 78px);
+    padding-bottom: clamp(40px, 4.7vw, 68px);
+  }
+  .univers-page__texte { display: flex; flex-direction: column; gap: var(--e-5); }
+  .univers-page__chapo { max-width: 48ch; }
+  .univers-page__meta { display: flex; gap: var(--e-6); color: var(--texte-tenu); }
+  .univers-page__meta dd { margin: 0; }
+  .univers-page__barre {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--e-5);
+    padding-block: var(--e-5);
+  }
+  .univers-page__filtres { display: flex; flex-wrap: wrap; gap: var(--e-6); }
+  .puce { color: var(--texte-tenu); transition: color var(--duree) var(--courbe); }
+  .puce:hover { color: var(--texte); }
+  .puce.est-actif { color: var(--texte); border-bottom: 1px solid var(--accent); padding-bottom: 3px; }
+  .puce[aria-disabled='true'] { opacity: .4; pointer-events: none; }
+  .univers-page__tri { display: flex; align-items: center; gap: var(--e-2); color: var(--texte-tenu); }
+  .univers-page__tri select {
+    background: transparent;
+    border: 0;
+    color: var(--texte);
+    letter-spacing: inherit;
+    text-transform: inherit;
+    font-size: inherit;
+    cursor: pointer;
+  }
+  .univers-page__grille-zone { padding-block: var(--e-8) clamp(56px, 6vw, 92px); }
+  .univers-page__vide { padding-block: var(--e-12); text-align: center; }
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--e-6);
+    margin-top: clamp(40px, 4.7vw, 68px);
+  }
+  @media (max-width: 989px) {
+    .univers-page__entete { grid-template-columns: 1fr; align-items: start; }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Page univers",
+  "settings": [
+    { "type": "range", "id": "par_page", "min": 6, "max": 36, "step": 3, "default": 12, "label": "Produits par page" },
+    { "type": "checkbox", "id": "numeroter", "default": true, "label": "Numéroter les pièces" }
+  ]
+}
+{% endschema %}
