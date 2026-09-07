@@ -30,7 +30,7 @@
           assign col = bloc.settings.collection
           assign numero = col.metafields.custom.numero.value | default: forloop.index
           assign chapo = col.metafields.custom.chapo.value | default: col.description
-          assign brief = col.metafields.custom.brief_photo.value | default: 'ambiance en situation'
+          assign brief = col.metafields.custom.brief_photo.value | default: 'pieces de l univers, posees sur une table'
           assign visuel = col.metafields.custom.image_editoriale.value | default: col.image
         -%}
         <article class="univers__carte" {{ bloc.shopify_attributes }}>
@@ -72,7 +72,7 @@
   "tag": "section",
   "max_blocks": 3,
   "settings": [
-    { "type": "text", "id": "surtitre", "label": "Surtitre", "default": "Trois ambiances" },
+    { "type": "text", "id": "surtitre", "label": "Surtitre", "default": "Les objets du quotidien" },
     { "type": "text", "id": "titre", "label": "Titre", "default": "Nos univers" },
     { "type": "text", "id": "lien_libelle", "label": "Libellé du lien", "default": "Voir tout" },
     { "type": "url", "id": "lien_url", "label": "Lien" }

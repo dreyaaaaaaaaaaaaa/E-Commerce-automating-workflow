@@ -12,7 +12,7 @@
   assign chapo = collection.metafields.custom.chapo.value | default: collection.description
   assign stylisme = collection.metafields.custom.stylisme.value
   assign visuel = collection.metafields.custom.image_editoriale.value | default: collection.image
-  assign brief = collection.metafields.custom.brief_photo.value | default: 'plan large éditorial de l ambiance · 4:3'
+  assign brief = collection.metafields.custom.brief_photo.value | default: 'plan large editorial, pieces de la collection en situation · 4:3'
 -%}
 
 <section class="univers-page" data-section="{{ section.id }}">

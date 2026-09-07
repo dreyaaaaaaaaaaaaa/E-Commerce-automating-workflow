@@ -6,8 +6,8 @@
         "surtitre": "Art de la table & décoration",
         "titre": "La table,",
         "titre_2": "comme un décor.",
-        "chapo": "Des pièces choisies pour la façon dont elles prennent la lumière. Réunies en univers, jamais en catalogue.",
-        "cta_libelle": "Découvrir les univers",
+        "chapo": "Verre soufflé, laiton brossé, lin lavé, céramique émaillée : des objets du quotidien, choisis pour la façon dont ils prennent la lumière, à commander pour votre table.",
+        "cta_libelle": "Voir les produits",
         "brief_photo": "plein écran · table en bois, marbre et laiton, lumière rasante de fin de journée"
       }
     },
@@ -20,7 +20,7 @@
       },
       "block_order": ["u1", "u2", "u3"],
       "settings": {
-        "surtitre": "Trois ambiances",
+        "surtitre": "Les objets du quotidien",
         "titre": "Nos univers",
         "lien_libelle": "Voir tout"
       }
