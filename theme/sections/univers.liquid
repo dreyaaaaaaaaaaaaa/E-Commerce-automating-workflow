@@ -10,6 +10,16 @@
   un quatrième univers casserait le rythme, l'éditeur ne peut pas l'ajouter.
 {%- endcomment -%}
 
+{%- liquid
+  assign afficher_section = request.design_mode
+  for bloc in section.blocks
+    if bloc.settings.collection != blank
+      assign afficher_section = true
+    endif
+  endfor
+-%}
+
+{%- if afficher_section -%}
 <section class="section univers" data-section="{{ section.id }}">
   <div class="enveloppe">
     <div class="entete-section filet-bas univers__entete">
@@ -33,6 +43,7 @@
           assign brief = col.metafields.custom.brief_photo.value | default: 'pieces de l univers, posees sur une table'
           assign visuel = col.metafields.custom.image_editoriale.value | default: col.image
         -%}
+        {%- if col != blank or request.design_mode -%}
         <article class="univers__carte" {{ bloc.shopify_attributes }}>
           <a href="{{ col.url | default: '#' }}" class="univers__lien">
             {%- render 'media',
@@ -49,10 +60,12 @@
             <span class="label label--nav univers__cta">{{ 'general.decouvrir' | t }}</span>
           </a>
         </article>
+        {%- endif -%}
       {%- endfor -%}
     </div>
   </div>
 </section>
+{%- endif -%}
 
 {% stylesheet %}
   .univers__entete { padding-bottom: var(--e-5); }

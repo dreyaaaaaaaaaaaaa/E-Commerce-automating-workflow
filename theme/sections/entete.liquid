@@ -19,11 +19,16 @@
     {%- comment -%} Wordmark {%- endcomment -%}
     <a class="entete__marque" href="{{ routes.root_url }}">
       {%- if section.settings.logo != blank -%}
+        {%- comment -%}
+          times: 1.0 force une division flottante (divided_by tronque a
+          l'entier sinon) ; round evite un ecart d'1px avec le ratio reel.
+        {%- endcomment -%}
+        {%- assign hauteur_logo = section.settings.logo.height | times: section.settings.largeur_logo | times: 1.0 | divided_by: section.settings.logo.width | round -%}
         <img
           src="{{ section.settings.logo | image_url: width: 320 }}"
           alt="{{ shop.name | escape }}"
           width="{{ section.settings.largeur_logo }}"
-          height="auto"
+          height="{{ hauteur_logo }}"
           loading="eager"
         >
       {%- else -%}
@@ -189,8 +194,8 @@
     data-libelle-voir-tout="{{ 'recherche.voir_tous_les_resultats' | t }}"
   >
     <div class="entete__recherche-voile" data-fermer-recherche></div>
-    <div class="entete__recherche-panneau" role="search">
-      <form action="{{ routes.search_url }}" method="get" class="entete__recherche-form">
+    <div class="entete__recherche-panneau" role="dialog" aria-modal="true" aria-label="{{ 'recherche.titre' | t }}">
+      <form action="{{ routes.search_url }}" method="get" class="entete__recherche-form" role="search">
         <input
           type="search"
           name="q"
@@ -224,13 +229,14 @@
   {%- endcomment -%}
   <panier-tiroir class="entete__panier" hidden data-libelle-erreur="{{ 'produit.erreur' | t }}">
     <div class="entete__panier-voile" data-fermer-panier></div>
-    <div class="entete__panier-panneau" role="dialog" aria-label="{{ 'tiroir_panier.titre' | t }}">
+    <div class="entete__panier-panneau" role="dialog" aria-modal="true" aria-label="{{ 'tiroir_panier.titre' | t }}">
       <div class="entete__panier-entete">
         <p class="titre-4">{{ 'tiroir_panier.titre' | t }}</p>
         <button
           type="button"
           class="entete__panier-fermer"
           data-fermer-panier
+          data-fermer-panier-focus
           aria-label="{{ 'tiroir_panier.fermer' | t }}"
         >&times;</button>
       </div>
@@ -250,7 +256,7 @@
                 {%- render 'media', image: ligne.image, ratio: '4-5', sizes: '80px' -%}
               </a>
               <div class="entete__panier-ligne-infos">
-                <a class="carte__titre" href="{{ ligne.url }}">{{ ligne.product.title }}</a>
+                <a class="carte__titre" href="{{ ligne.url }}">{{ ligne.product.title | escape }}</a>
                 {%- unless ligne.variant.title contains 'Default' -%}
                   <p class="mono--s">{{ ligne.variant.title }}</p>
                 {%- endunless -%}
@@ -274,7 +280,7 @@
                 class="entete__panier-retirer mono--s"
                 data-retirer-panier
                 data-index="{{ forloop.index }}"
-                aria-label="{{ 'panier.retirer' | t: titre: ligne.product.title }}"
+                aria-label="{{ 'panier.retirer' | t: titre: ligne.product.title | escape }}"
               >{{ 'panier.retirer_court' | t }}</button>
             </li>
           {%- endfor -%}
@@ -290,9 +296,11 @@
             <a class="bouton bouton--ligne" href="{{ routes.cart_url }}" data-fermer-panier>
               {{ 'tiroir_panier.voir_panier' | t }}
             </a>
-            <a class="bouton bouton--plein" href="{{ routes.cart_url }}/checkout">
-              {{ 'tiroir_panier.commander' | t }}
-            </a>
+            <form action="{{ routes.cart_url }}" method="post">
+              <button type="submit" name="checkout" class="bouton bouton--plein">
+                {{ 'tiroir_panier.commander' | t }}
+              </button>
+            </form>
           </div>
         </div>
       {%- endif -%}
@@ -491,7 +499,9 @@
   .entete__panier-total { display: flex; align-items: baseline; justify-content: space-between; }
   .entete__panier-mention { color: var(--texte-tenu); margin-top: var(--e-2); }
   .entete__panier-actions { display: flex; gap: var(--e-3); margin-top: var(--e-6); }
-  .entete__panier-actions .bouton { flex: 1; }
+  .entete__panier-actions > * { flex: 1; }
+  .entete__panier-actions form { display: flex; }
+  .entete__panier-actions .bouton { flex: 1; width: 100%; }
 
   @media (max-width: 480px) {
     .entete__panier-panneau { width: 100%; }

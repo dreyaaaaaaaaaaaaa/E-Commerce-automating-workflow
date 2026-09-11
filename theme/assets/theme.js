@@ -18,6 +18,21 @@
     if (zone) zone.textContent = message;
   };
 
+  /* Verrou de defilement partage entre les panneaux superposables (nav
+     mobile, recherche, tiroir de panier). Un compteur plutot qu'un simple
+     booleen : si deux panneaux sont ouverts en meme temps (ex. "Panier"
+     cliqué depuis le menu mobile encore ouvert), fermer l'un ne doit pas
+     deverrouiller le defilement tant que l'autre reste ouvert. */
+  let verrousDefilement = 0;
+  const verrouillerDefilement = () => {
+    verrousDefilement += 1;
+    document.documentElement.style.overflow = 'hidden';
+  };
+  const deverrouillerDefilement = () => {
+    verrousDefilement = Math.max(0, verrousDefilement - 1);
+    if (verrousDefilement === 0) document.documentElement.style.overflow = '';
+  };
+
   /* Remplace une section par sa version fraiche, rendue cote serveur.
      Partagee par l'ajout au panier et le tiroir de panier : c'est le meme
      mecanisme, Shopify accepte le parametre `sections` sur /cart/add.js
@@ -139,6 +154,18 @@
       );
       if (!variante) return;
 
+      // Le formulaire doit suivre la variante choisie immédiatement. Le rendu
+      // serveur ci-dessous reste la source de vérité pour le prix et le stock,
+      // mais un réseau lent ne doit jamais laisser l'ancien identifiant partir
+      // au panier.
+      const champVariante = this.querySelector('input[name="id"]');
+      if (champVariante) champVariante.value = variante.id;
+
+      this.querySelectorAll('.produit__option').forEach((groupe, index) => {
+        const valeur = groupe.querySelector('.produit__option-valeur');
+        if (valeur && options[index]) valeur.textContent = options[index];
+      });
+
       const url = new URL(window.location);
       url.searchParams.set('variant', variante.id);
       window.history.replaceState({}, '', url);
@@ -146,11 +173,21 @@
       const reponse = await fetch(`${url.pathname}?variant=${variante.id}&section_id=${this.dataset.section}`);
       const html = new DOMParser().parseFromString(await reponse.text(), 'text/html');
 
-      ['[data-prix]', '[data-bouton-achat]', '[data-disponibilite]'].forEach((sel) => {
-        const src = html.querySelector(sel);
-        const dst = document.querySelector(sel);
-        if (src && dst) dst.innerHTML = src.innerHTML;
-      });
+      // [data-prix] n'est pas dans <selecteur-variante> mais a cote, dans
+      // la meme section produit : on retrouve la section par son id plutot
+      // que de faire un closest (qui se matcherait lui-meme puisque
+      // <selecteur-variante> porte aussi data-section).
+      const sectionProduit = document.querySelector(`[data-section="${this.dataset.section}"]`);
+      const prixSource = html.querySelector('[data-prix]');
+      const prixCible = sectionProduit?.querySelector('[data-prix]');
+      if (prixSource && prixCible) prixCible.innerHTML = prixSource.innerHTML;
+
+      const boutonSource = html.querySelector('[data-bouton-achat]');
+      const boutonCible = this.querySelector('[data-bouton-achat]');
+      if (boutonSource && boutonCible) {
+        boutonCible.innerHTML = boutonSource.innerHTML;
+        boutonCible.disabled = boutonSource.disabled;
+      }
     }
   }
   customElements.define('selecteur-variante', SelecteurVariante);
@@ -175,12 +212,24 @@
   /* ---------- Navigation mobile ---------- */
   class NavMobile extends HTMLElement {
     connectedCallback() {
+      this.controleurEvenements?.abort();
+      this.controleurEvenements = new AbortController();
       this.bouton = this.querySelector('[data-ouvrir]');
       this.panneau = this.querySelector('[data-panneau]');
-      this.bouton?.addEventListener('click', () => this.basculer());
+      this.bouton?.addEventListener('click', () => this.basculer(), {
+        signal: this.controleurEvenements.signal,
+      });
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && this.ouvert) this.basculer(false);
-      });
+      }, { signal: this.controleurEvenements.signal });
+    }
+
+    disconnectedCallback() {
+      this.controleurEvenements?.abort();
+      if (this.verrouille) {
+        this.verrouille = false;
+        deverrouillerDefilement();
+      }
     }
 
     get ouvert() {
@@ -191,7 +240,13 @@
       const cible = force === undefined ? !this.ouvert : force;
       this.bouton.setAttribute('aria-expanded', String(cible));
       this.panneau.hidden = !cible;
-      document.documentElement.style.overflow = cible ? 'hidden' : '';
+      if (cible && !this.verrouille) {
+        this.verrouille = true;
+        verrouillerDefilement();
+      } else if (!cible && this.verrouille) {
+        this.verrouille = false;
+        deverrouillerDefilement();
+      }
       if (cible) this.panneau.querySelector('a, button')?.focus();
       else this.bouton.focus();
     }
@@ -207,6 +262,8 @@
      href vers /search et fonctionnent normalement. */
   class RecherchePredictive extends HTMLElement {
     connectedCallback() {
+      this.controleurEvenements?.abort();
+      this.controleurEvenements = new AbortController();
       this.champ = this.querySelector('[data-champ-recherche]');
       this.zoneResultats = this.querySelector('[data-resultats-recherche]');
       this.urlSuggestions = this.dataset.urlSuggestions;
@@ -218,29 +275,53 @@
       this.minuteur = null;
 
       document.addEventListener('click', (e) => {
-        if (e.target.closest('[data-ouvrir-recherche]')) {
+        const declencheur = e.target.closest('[data-ouvrir-recherche]');
+        if (declencheur) {
           e.preventDefault();
-          this.ouvrir();
+          this.ouvrir(declencheur);
         }
-      });
+      }, { signal: this.controleurEvenements.signal });
       this.querySelectorAll('[data-fermer-recherche]').forEach((el) =>
-        el.addEventListener('click', () => this.fermer())
+        el.addEventListener('click', () => this.fermer(), {
+          signal: this.controleurEvenements.signal,
+        })
       );
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && !this.hidden) this.fermer();
+      }, { signal: this.controleurEvenements.signal });
+      this.champ?.addEventListener('input', () => this.planifier(), {
+        signal: this.controleurEvenements.signal,
       });
-      this.champ?.addEventListener('input', () => this.planifier());
     }
 
-    ouvrir() {
+    disconnectedCallback() {
+      this.controleurEvenements?.abort();
+      this.controleur?.abort();
+      clearTimeout(this.minuteur);
+      if (this.verrouille) {
+        this.verrouille = false;
+        deverrouillerDefilement();
+      }
+    }
+
+    ouvrir(declencheur) {
+      this.declencheur = declencheur || null;
       this.hidden = false;
-      document.documentElement.style.overflow = 'hidden';
+      if (!this.verrouille) {
+        this.verrouille = true;
+        verrouillerDefilement();
+      }
       this.champ?.focus();
     }
 
     fermer() {
       this.hidden = true;
-      document.documentElement.style.overflow = '';
+      if (this.verrouille) {
+        this.verrouille = false;
+        deverrouillerDefilement();
+      }
+      if (this.declencheur?.isConnected) this.declencheur.focus();
+      this.declencheur = null;
     }
 
     planifier() {
@@ -369,27 +450,30 @@
      rester synchronise avec le serveur, jamais recalculer un prix ici. */
   class PanierTiroir extends HTMLElement {
     connectedCallback() {
+      this.controleurEvenements?.abort();
+      this.controleurEvenements = new AbortController();
       this.enCours = false;
 
       document.addEventListener('click', (e) => {
-        if (e.target.closest('[data-ouvrir-panier]')) {
+        const declencheur = e.target.closest('[data-ouvrir-panier]');
+        if (declencheur) {
           e.preventDefault();
-          this.ouvrir();
+          this.ouvrir(declencheur);
         }
-      });
+      }, { signal: this.controleurEvenements.signal });
       // Pas de preventDefault ici : les liens "voir le panier" et
       // "continuer mes achats" doivent naviguer normalement.
       this.addEventListener('click', (e) => {
         if (e.target.closest('[data-fermer-panier]')) this.fermer();
-      });
+      }, { signal: this.controleurEvenements.signal });
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && !this.hidden) this.fermer();
-      });
+      }, { signal: this.controleurEvenements.signal });
 
       this.addEventListener('click', (e) => {
         const retirer = e.target.closest('[data-retirer-panier]');
         if (retirer) this.changerQuantite(retirer.dataset.index, 0);
-      });
+      }, { signal: this.controleurEvenements.signal });
 
       // selecteur-quantite gere deja le clic sur +/- et redispatch un
       // 'change' sur l'input (bulle) : on n'a qu'a l'ecouter ici, pas
@@ -399,17 +483,45 @@
         if (!champ) return;
         const groupe = champ.closest('[data-quantite-panier]');
         this.changerQuantite(groupe.dataset.index, champ.value);
-      });
+      }, { signal: this.controleurEvenements.signal });
     }
 
-    ouvrir() {
+    disconnectedCallback() {
+      this.controleurEvenements?.abort();
+      if (this.verrouille) {
+        this.verrouille = false;
+        deverrouillerDefilement();
+      }
+    }
+
+    ouvrir(declencheur) {
+      // ouvrir() est aussi rappele en interne apres un changement de
+      // quantite (le noeud est remplace par rafraichirSections) : on ne
+      // doit ecraser le declencheur d'origine que si un nouveau nous est
+      // explicitement fourni, sinon le focus ne pourrait plus jamais y
+      // retourner a la fermeture.
+      if (declencheur) this.declencheur = declencheur;
       this.hidden = false;
-      document.documentElement.style.overflow = 'hidden';
+      if (!this.verrouille) {
+        this.verrouille = true;
+        verrouillerDefilement();
+      }
+      // [data-fermer-panier] est aussi porte par le voile et les liens
+      // "continuer mes achats" / "voir le panier" : cibler explicitement
+      // le bouton de fermeture pour que le focus entre bien dans le
+      // dialogue (un <div> n'est pas focusable, .focus() y echouerait
+      // silencieusement).
+      this.querySelector('[data-fermer-panier-focus]')?.focus();
     }
 
     fermer() {
       this.hidden = true;
-      document.documentElement.style.overflow = '';
+      if (this.verrouille) {
+        this.verrouille = false;
+        deverrouillerDefilement();
+      }
+      if (this.declencheur?.isConnected) this.declencheur.focus();
+      this.declencheur = null;
     }
 
     async changerQuantite(ligne, quantite) {

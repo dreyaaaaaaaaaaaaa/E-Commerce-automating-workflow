@@ -21,9 +21,9 @@
       {%- if numero -%}
         <p class="mono">{{ 'collection.univers' | t }} {{ numero | prepend: '0' | slice: -2, 2 }}</p>
       {%- endif -%}
-      <h1 class="titre-1">{{ collection.title }}</h1>
+      <h1 class="titre-1">{{ collection.title | escape }}</h1>
       {%- if chapo != blank -%}
-        <p class="corps--l univers-page__chapo">{{ chapo | strip_html }}</p>
+        <p class="corps--l univers-page__chapo">{{ chapo | strip_html | escape }}</p>
       {%- endif -%}
       <dl class="univers-page__meta label label--nav">
         <div>

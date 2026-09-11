@@ -7,8 +7,15 @@
 {%- liquid
   assign col = section.settings.collection
   assign nombre = section.settings.nombre | default: 4
+  assign afficher_section = false
+  if col != blank and col.products.size > 0
+    assign afficher_section = true
+  elsif request.design_mode
+    assign afficher_section = true
+  endif
 -%}
 
+{%- if afficher_section -%}
 <section class="section nouveautes" data-section="{{ section.id }}">
   <div class="enveloppe">
     <div class="entete-section filet-bas nouveautes__entete">
@@ -47,6 +54,7 @@
     </div>
   </div>
 </section>
+{%- endif -%}
 
 {% stylesheet %}
   .nouveautes__entete { padding-bottom: var(--e-5); }

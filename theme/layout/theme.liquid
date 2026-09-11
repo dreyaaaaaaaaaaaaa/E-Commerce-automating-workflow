@@ -22,11 +22,12 @@
       <link rel="apple-touch-icon" href="{{ settings.favicon | image_url: width: 180, height: 180 }}">
     {%- endif -%}
 
+    {%- assign balises_meta = current_tags | join: ', ' -%}
     <title>
-      {{- page_title -}}
-      {%- if current_tags %} &middot; {{ 'general.meta.tags' | t: tags: current_tags | join: ', ' }}{% endif -%}
-      {%- if current_page != 1 %} &middot; {{ 'general.meta.page' | t: page: current_page }}{% endif -%}
-      {%- unless page_title contains shop.name %} &middot; {{ shop.name }}{% endunless -%}
+      {{- page_title | escape -}}
+      {%- if current_tags %} &middot; {{ 'general.meta.tags' | t: tags: balises_meta | escape }}{% endif -%}
+      {%- if current_page != 1 %} &middot; {{ 'general.meta.page' | t: page: current_page | escape }}{% endif -%}
+      {%- unless page_title contains shop.name %} &middot; {{ shop.name | escape }}{% endunless -%}
     </title>
     {%- if page_description -%}
       <meta name="description" content="{{ page_description | escape }}">
@@ -81,6 +82,35 @@
         "moneyFormat": {{ shop.money_format | json }}
       }
     </script>
+
+    {%- if settings.bandeau_consentement -%}
+      <bandeau-consentement
+        class="consentement"
+        role="dialog"
+        aria-label="{{ 'consentement.titre' | t }}"
+        hidden
+      >
+        <div class="consentement__contenu">
+          <div class="consentement__texte">
+            <p class="titre-4">{{ 'consentement.titre' | t }}</p>
+            <p class="corps--s">{{ 'consentement.texte' | t }}</p>
+            {%- if settings.page_confidentialite != blank -%}
+              <a class="lien-filet corps--s" href="{{ settings.page_confidentialite.url }}">
+                {{ 'consentement.en_savoir_plus' | t }}
+              </a>
+            {%- endif -%}
+          </div>
+          <div class="consentement__actions">
+            <button class="bouton bouton--ligne" type="button" data-consentement="refuser">
+              {{ 'consentement.refuser' | t }}
+            </button>
+            <button class="bouton bouton--plein" type="button" data-consentement="accepter">
+              {{ 'consentement.accepter' | t }}
+            </button>
+          </div>
+        </div>
+      </bandeau-consentement>
+    {%- endif -%}
 
     <div id="annonce-live" class="visuellement-cache" role="status" aria-live="polite"></div>
   </body>

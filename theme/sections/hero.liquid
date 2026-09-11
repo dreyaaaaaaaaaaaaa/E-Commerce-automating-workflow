@@ -5,16 +5,18 @@
   lignes dont la seconde en italique optique, chapô Jost 300.
 {%- endcomment -%}
 
-<section class="hero" data-section="{{ section.id }}">
-  {%- render 'media',
-    image: section.settings.image,
-    ratio: '3-2',
-    brief: section.settings.brief_photo,
-    sizes: '100vw',
-    priorite: true,
-    classe: 'hero__media'
-  -%}
-  <div class="voile-hero"></div>
+<section class="hero{% if section.settings.image == blank %} hero--texte{% endif %}" data-section="{{ section.id }}">
+  {%- if section.settings.image != blank -%}
+    {%- render 'media',
+      image: section.settings.image,
+      ratio: '3-2',
+      brief: section.settings.brief_photo,
+      sizes: '100vw',
+      priorite: true,
+      classe: 'hero__media'
+    -%}
+    <div class="voile-hero"></div>
+  {%- endif -%}
 
   <div class="hero__contenu">
     {%- if section.settings.surtitre != blank -%}
@@ -42,6 +44,7 @@
 
 {% stylesheet %}
   .hero { position: relative; isolation: isolate; }
+  .hero--texte { min-height: calc(var(--hauteur-hero) * .72); background: var(--fond-alt); }
   .hero__media { height: var(--hauteur-hero); }
   .hero__media.media { aspect-ratio: auto; }
   .hero__contenu {

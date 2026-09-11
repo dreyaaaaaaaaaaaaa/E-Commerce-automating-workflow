@@ -173,6 +173,13 @@
     "tous_droits": "Tous droits réservés",
     "moyens_paiement": "Moyens de paiement acceptés"
   },
+  "consentement": {
+    "titre": "Vos préférences de confidentialité",
+    "texte": "Nous utilisons des outils de mesure uniquement avec votre accord.",
+    "accepter": "Accepter",
+    "refuser": "Continuer sans mesure",
+    "en_savoir_plus": "En savoir plus"
+  },
   "erreur": {
     "code": "Erreur 404",
     "titre": "Cette page n'existe plus.",

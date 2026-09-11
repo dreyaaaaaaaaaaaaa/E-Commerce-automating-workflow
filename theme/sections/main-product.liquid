@@ -26,10 +26,10 @@
     <a class="lien-filet" href="{{ routes.root_url }}">{{ 'general.accueil' | t }}</a>
     {%- if univers -%}
       <span aria-hidden="true">&middot;</span>
-      <a class="lien-filet" href="{{ univers.url }}">{{ univers.title }}</a>
+      <a class="lien-filet" href="{{ univers.url }}">{{ univers.title | escape }}</a>
     {%- endif -%}
     <span aria-hidden="true">&middot;</span>
-    <span aria-current="page">{{ product.title }}</span>
+    <span aria-current="page">{{ product.title | escape }}</span>
   </nav>
 
   <div class="enveloppe produit__corps">
@@ -75,10 +75,10 @@
     {%- comment -%} Colonne d'information {%- endcomment -%}
     <div class="produit__infos">
       {%- if univers -%}
-        <p class="label label--fin produit__univers">{{ univers.title }}</p>
+        <p class="label label--fin produit__univers">{{ univers.title | escape }}</p>
       {%- endif -%}
 
-      <h1 class="titre-2">{{ product.title }}</h1>
+      <h1 class="titre-2">{{ product.title | escape }}</h1>
 
       <div class="produit__prix-ligne">
         <p class="produit__prix" data-prix>{%- render 'prix', produit: product, variante: variante -%}</p>
@@ -113,8 +113,8 @@
                 -%}
                 <fieldset class="produit__option">
                   <legend class="label label--fin produit__option-titre">
-                    {{ option.name }} :
-                    <span class="produit__option-valeur">{{ option.selected_value }}</span>
+                    {{ option.name | escape }} :
+                    <span class="produit__option-valeur">{{ option.selected_value | escape }}</span>
                   </legend>
                   <div class="produit__pastilles{% if est_couleur %} produit__pastilles--couleur{% endif %}">
                     {%- for valeur in option.values -%}
@@ -134,10 +134,10 @@
                           style="background:{% render 'couleur-swatch', nom: valeur %}"
                           title="{{ valeur | escape }}"
                         >
-                          <span class="visuellement-cache">{{ valeur }}</span>
+                          <span class="visuellement-cache">{{ valeur | escape }}</span>
                         </label>
                       {%- else -%}
-                        <label class="pastille label--nav" for="{{ id }}">{{ valeur }}</label>
+                        <label class="pastille label--nav" for="{{ id }}">{{ valeur | escape }}</label>
                       {%- endif -%}
                     {%- endfor -%}
                   </div>
@@ -257,7 +257,7 @@
     align-items: center;
     padding: 8px 14px;
     border: 1px solid var(--filet);
-    font-size: 10.5px;
+    font-size: 12px;
     letter-spacing: var(--ls-nav);
     text-transform: uppercase;
     cursor: pointer;

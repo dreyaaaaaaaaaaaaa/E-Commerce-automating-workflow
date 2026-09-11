@@ -173,6 +173,13 @@
     "tous_droits": "All rights reserved",
     "moyens_paiement": "Accepted payment methods"
   },
+  "consentement": {
+    "titre": "Your privacy choices",
+    "texte": "We use analytics tools only with your consent.",
+    "accepter": "Accept",
+    "refuser": "Continue without analytics",
+    "en_savoir_plus": "Learn more"
+  },
   "erreur": {
     "code": "Error 404",
     "titre": "This page no longer exists.",
