@@ -94,6 +94,29 @@ avec `shopify theme dev` : theme check et le verificateur de coherence
 attrapent les erreurs structurelles, pas les erreurs de rendu ou de
 comportement au clic.
 
+## Le coffre Obsidian (`docs/`) : la memoire vivante du projet
+
+Le depot est aussi un coffre Obsidian (config dans `.obsidian/`, notes dans
+`docs/`, point d'entree `docs/Accueil.md`). ARCHITECTURE.md reste la
+reference technique ; le coffre garde ce qui n'y a pas sa place : le journal
+des sessions, les decisions datees, le suivi par produit et par fournisseur,
+les zones en pause, les questions ouvertes. Mode d'emploi :
+`docs/09 Ressources/Comment utiliser ce coffre.md`.
+
+A chaque session qui change quelque chose :
+
+- ajouter ou completer la note du jour dans `docs/01 Journal/AAAA-MM-JJ.md`
+  (modele : `docs/Modeles/Modele journal.md`) : fait, decide, bloque,
+  prochaine etape, commits ;
+- toute decision qui engage la suite (perimetre, architecture, DA, donnees)
+  prend une note datee dans `docs/03 Decisions/` ;
+- un nouveau produit JSON a sa note de suivi dans `docs/04 Produits/` ;
+- une zone en pause qui reprend : mettre a jour
+  `docs/03 Decisions/2026-09-08 Trois zones en pause.md` et ce fichier.
+
+Memes regles que le code : francais, pas de tiret cadratin, lier vers
+ARCHITECTURE.md (`[[ARCHITECTURE#section]]`) plutot que le recopier.
+
 ## Se reperer sans lire tout le depot
 
 | Question | Reponse dans |

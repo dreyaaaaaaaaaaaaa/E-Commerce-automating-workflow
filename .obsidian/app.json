@@ -1,0 +1,18 @@
+{
+  "newFileLocation": "folder",
+  "newFileFolderPath": "docs/00 Boite de reception",
+  "attachmentFolderPath": "docs/_pieces-jointes",
+  "showLineNumber": true,
+  "spellcheck": false,
+  "readableLineLength": true,
+  "strictLineBreaks": false,
+  "defaultViewMode": "preview",
+  "userIgnoreFilters": [
+    "theme/",
+    "ops/",
+    "tools/",
+    ".github/",
+    ".design-canvas/",
+    ".claude/"
+  ]
+}

@@ -16,3 +16,9 @@ ops/rapports/*.json
 # Fichiers de travail du canvas Claude Design (maquettes visuelles) :
 # pas du code du theme, ne doit pas vivre dans ce depot.
 .design-canvas/
+
+# Coffre Obsidian : la config est versionnee, pas l etat de la fenetre.
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/plugins/
+.obsidian/cache
