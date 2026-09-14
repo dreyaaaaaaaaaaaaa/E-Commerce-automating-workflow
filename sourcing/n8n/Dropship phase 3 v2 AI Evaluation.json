@@ -1,0 +1,675 @@
+{
+  "name": "Dropship phase 3 v2 - Evidence Based Product Evaluation",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger",
+      "name": "Manual Phase 3 test trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1180,
+        80
+      ]
+    },
+    {
+      "parameters": {"inputSource": "passthrough"},
+      "id": "trigger-subworkflow-phase3",
+      "name": "Run Phase 3 from orchestrator",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [-1180, 180]
+    },
+    {
+      "parameters": {
+        "url": "={{ ($vars.ALIEXPRESS_API_BASE || 'http://host.docker.internal:8787') + '/health' }}",
+        "options": {"timeout": 10000}
+      },
+      "id": "health-aliexpress",
+      "name": "Check AliExpress API health",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [-1070, 80]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/VOTRE_ID_GOOGLE_SHEET/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 227160725,
+          "mode": "list",
+          "cachedResultName": "Possible items"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "status",
+              "lookupValue": "PHASE2_RESEARCHED"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "opportunities",
+      "name": "Get researched opportunity evidence",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -970,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/VOTRE_ID_GOOGLE_SHEET/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1922860688,
+          "mode": "list",
+          "cachedResultName": "Found items online"
+        },
+        "options": {}
+      },
+      "id": "products",
+      "name": "Get products awaiting Phase 3",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -970,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "append"
+      },
+      "id": "merge",
+      "name": "Wait for evidence and products",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -750,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows=$input.all().map(item=>item.json);\nconst evidenceRows=rows.filter(row=>row.product_name);\nconst evidenceByOpportunity=new Map();\nconst evidenceByName=new Map();\nfor(const row of evidenceRows){ const sourceProblem=String(row.product_name || ''); const searchQuery=String(row.search_query || ''); const opportunityId=String(row.opportunity_id || (row.source_id ? 'reddit:' + row.source_id : 'legacy:' + sourceProblem.toLowerCase() + '|' + searchQuery.toLowerCase())); const evidence={opportunity_id:opportunityId,source_id:row.source_id || null,source_url:row.source_url || null,source_problem:sourceProblem,search_query:searchQuery,problem_evidence:row.trend_context || null,problem_code:row.problem_solved || null,target_customer:row.target_customer || null,why_relevant:row.why_relevant || null}; evidenceByOpportunity.set(opportunityId,evidence); if(!evidenceByName.has(sourceProblem)) evidenceByName.set(sourceProblem,evidence); }\nconst pendingStatuses=new Set(['RESEARCHED','PHASE3_RETRY']);\nconst seen=new Set(); const output=[]; const now=Date.now();\nfor(const row of rows.filter(row=>row['product name'] && pendingStatuses.has(String(row.status || '').toUpperCase()))){ const status=String(row.status || '').toUpperCase(); const nextRetry=Date.parse(String(row.phase3_next_retry_at || '')); if(status==='PHASE3_RETRY' && Number.isFinite(nextRetry) && nextRetry>now) continue; const link=String(row.link || ''); const productId=String(row.product_id || link.match(/(?:item\\/|\\b)(\\d{10,})(?:\\.html)?/)?.[1] || ''); const sourceProblem=String(row['product name'] || ''); const opportunityId=String(row.opportunity_id || ''); const evidence=evidenceByOpportunity.get(opportunityId) || evidenceByName.get(sourceProblem); if(!productId || !evidence) continue; const destination=String(row.destination_country || 'FR').toUpperCase(); const key=String(row.evaluation_key || evidence.opportunity_id+'|'+productId+'|'+destination); if(seen.has(key)) continue; seen.add(key); output.push({json:{...row,...evidence,product_id:productId,destination_country:destination,evaluation_key:key,phase3_retry_count:Number(row.phase3_retry_count || 0)}}); }\nreturn output.slice(0,50);"
+      },
+      "id": "select",
+      "name": "Join evidence and select up to 50 products",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -530,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ ($vars.ALIEXPRESS_API_BASE || 'http://host.docker.internal:8787') + '/products/' + $json.product_id + '?country=' + $json.destination_country + '&currency=' + ($json.currency || 'EUR') }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "details",
+      "name": "Get stored AliExpress evidence",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -310,
+        80
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000
+    },
+    {
+      "parameters": {
+        "jsCode": "const details=$input.all(); const sources=$('Join evidence and select up to 50 products').all(); const products=details.map((item,index)=>{ const p=item.json; const source=sources[index]?.json || {}; const supplier=p.supplier || {}; const variants=(p.variants || []).filter(v=>v.eligible_for_destination !== false).slice(0,5).map(v=>({label:v.label,attributes:v.attributes,sale_price:v.sale_price,currency:v.currency,stock:v.stock,available:v.available,eligible_for_destination:v.eligible_for_destination})); return {product_id:p.product_id,opportunity_id:source.opportunity_id || null,source_id:source.source_id || null,source_url:source.source_url || null,destination_country:source.destination_country || 'FR',evaluation_key:source.evaluation_key,phase3_retry_count:Number(source.phase3_retry_count || 0),source_problem:source.source_problem,search_query:source.search_query,problem_evidence:source.problem_evidence,problem_code:source.problem_code,target_customer:source.target_customer,why_relevant:source.why_relevant,title:p.title,url:p.url,currency:p.currency,eligible_min_price:p.eligible_min_price,eligible_max_price:p.eligible_max_price,eligible_variant_count:p.eligible_variant_count,rating:p.rating,review_count:p.review_count,orders_count:p.orders_count,supplier:{name:supplier.name,positive_feedback:supplier.positive_feedback,followers:supplier.followers,years_open:supplier.years_open,top_rated:supplier.top_rated},variant_examples:variants,warnings:p.warnings || [],snapshot_status:p.last_status,field_fetched_at:p.field_fetched_at || {},specifications:p.specifications || {}}; });\nconst grouped=new Map(); for(const p of products){ if(!grouped.has(p.opportunity_id)) grouped.set(p.opportunity_id,[]); grouped.get(p.opportunity_id).push(p); }\nconst batches=[]; let batchId=1; for(const [opportunityId,items] of grouped){ for(let i=0;i<items.length;i+=5) batches.push({json:{batch_id:batchId++,opportunity_id:opportunityId,source_problem:items[0]?.source_problem,products:items.slice(i,i+5),prompt_version:'product-evaluator-strict-v3'}}); } return batches;"
+      },
+      "id": "batches",
+      "name": "Build evidence batches of 5",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -90,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ JSON.stringify($json.products) }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are a strict evidence-based ecommerce product evaluator. Evaluate every supplied AliExpress listing against its exact documented source problem. REJECT when the listing is a different product type, only loosely related, does not address the stated failed constraint, is a commodity substitute without evidence of improved fit, or lacks a destination-eligible variant. Missing critical dimensions or specifications must prevent SHORTLIST when the source problem depends on size, depth, width, compatibility, capacity, material, or another measurable constraint. Treat a dimension as a hard mismatch only when the source explicitly states a minimum, maximum, or compatibility requirement and the listing clearly violates it. Available space is not automatically a required product dimension; when the role or orientation of a measurement is ambiguous, use HOLD rather than REJECT. Use HOLD only for a plausible match requiring a specific human verification. SHORTLIST only when supplied title, specifications or eligible variants directly support the critical problem requirements and no major mismatch is visible. Never infer shipping, delivery, margin, certification, product quality, demand, supplier reliability or missing dimensions. Scores are integers 0-100. overall_score must reflect evidence, not optimism: direct problem fit 40%, evidence quality 20%, supplier signal 15%, variant fit 15%, marketing clarity 10%, then reduce for return risk. SHORTLIST requires overall_score >=75, problem_solution_fit >=80, evidence_quality >=65 and variant_fit >=70. HOLD must score below 75. REJECT obvious mismatches even if ratings or orders are strong. Return one JSON object only with exactly one result for every input product_id: {\"prompt_version\":\"product-evaluator-strict-v3\",\"results\":[{\"product_id\":\"id\",\"verdict\":\"shortlist|hold|reject\",\"reason_code\":\"DIRECT_FIT|PLAUSIBLE_NEEDS_CHECK|DIMENSIONS_UNPROVEN|PRODUCT_TYPE_MISMATCH|WEAK_EVIDENCE|NO_ELIGIBLE_VARIANT|SUPPLIER_EVIDENCE_WEAK|HIGH_RETURN_RISK\",\"problem_solution_fit\":0,\"evidence_quality\":0,\"supplier_signal\":0,\"variant_fit\":0,\"marketing_potential\":0,\"return_risk\":0,\"overall_score\":0,\"positive_evidence\":[\"maximum 3 supplied facts\"],\"risks\":[\"maximum 3 supplied risks or missing facts\"],\"next_validation_steps\":[\"maximum 2 concrete checks\"],\"reasoning_short\":\"maximum 45 words\",\"confidence\":0}]}. confidence is 50-100 confidence in the verdict. No markdown, hidden analysis or extra fields."
+            }
+          ]
+        }
+      },
+      "id": "ai",
+      "name": "AI - Strict product evaluation",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 10000,
+      "position": [
+        150,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "qwen3.8-flash",
+          "mode": "list",
+          "cachedResultName": "qwen3.8-flash"
+        },
+        "responsesApiEnabled": false,
+        "options": {
+          "temperature": 0,
+          "maxTokens": 1800
+        }
+      },
+      "id": "model",
+      "name": "Configure Phase 3 AI model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        150,
+        310
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const responses=$input.all();\nconst batches=$('Build evidence batches of 5').all();\nif(responses.length !== batches.length) throw new Error(`Expected ${batches.length} AI responses, got ${responses.length}`);\nconst scoreFields=['problem_solution_fit','evidence_quality','supplier_signal','variant_fit','marketing_potential','return_risk','overall_score','confidence'];\nconst allowedReasons=new Set(['DIRECT_FIT','PLAUSIBLE_NEEDS_CHECK','DIMENSIONS_UNPROVEN','PRODUCT_TYPE_MISMATCH','WEAK_EVIDENCE','NO_ELIGIBLE_VARIANT','SUPPLIER_EVIDENCE_WEAK','HIGH_RETURN_RISK']);\nreturn responses.flatMap((item,index)=>{\n  const batch=batches[index].json;\n  const raw=String(item.json.text || '').replace(/```json/gi,'').replace(/```/g,'').trim();\n  const byProduct=new Map(batch.products.map(p=>[String(p.product_id),p]));\n  let parsedResults=[]; let batchError=null;\n  try {\n    const parsed=JSON.parse(raw);\n    parsedResults=Array.isArray(parsed)?parsed:parsed.results;\n    if(!Array.isArray(parsedResults)) throw new Error('results is not an array');\n  } catch(error) { batchError=error.message; }\n  const byId=new Map();\n  if(!batchError){\n    for(const result of parsedResults){\n      const id=String(result?.product_id || '');\n      if(!byProduct.has(id)){ batchError='Unknown product_id: '+id; break; }\n      if(byId.has(id)){ batchError='Duplicate product_id: '+id; break; }\n      byId.set(id,result);\n    }\n  }\n  const metadata=item.json.response_metadata || item.json.usage_metadata || item.json.usage || null;\n  return batch.products.map(product=>{\n    const original=byId.get(String(product.product_id));\n    const errors=[];\n    if(batchError) errors.push(batchError);\n    if(!original) errors.push('AI omitted this product');\n    if(original){\n      const verdict=String(original.verdict || '').toLowerCase();\n      if(!['shortlist','hold','reject'].includes(verdict)) errors.push('Invalid verdict');\n      if(!allowedReasons.has(String(original.reason_code || ''))) errors.push('Invalid reason_code');\n      if(!String(original.reasoning_short || '').trim()) errors.push('Missing reasoning_short');\n      for(const field of scoreFields){ const value=original[field]; if(typeof value!=='number' || !Number.isFinite(value) || !Number.isInteger(value) || value<0 || value>100) errors.push('Invalid '+field); }\n    }\n    let result;\n    if(errors.length){\n      result={product_id:product.product_id,verdict:'hold',reason_code:'AI_FORMAT_ERROR',problem_solution_fit:0,evidence_quality:0,supplier_signal:0,variant_fit:0,marketing_potential:0,return_risk:0,overall_score:0,positive_evidence:[],risks:[],next_validation_steps:['Rerun evaluation'],reasoning_short:'Invalid AI result: '+errors.join('; '),confidence:0};\n    } else {\n      result={...original,verdict:String(original.verdict).toLowerCase()};\n      if(Number(product.eligible_variant_count || 0)<=0){ result.verdict='reject'; result.reason_code='NO_ELIGIBLE_VARIANT'; }\n      if(result.verdict==='shortlist' && (result.overall_score<75 || result.problem_solution_fit<80 || result.evidence_quality<65 || result.variant_fit<70)) result.verdict='hold';\n      if(result.verdict==='hold' && result.overall_score>=75){ result.verdict='hold'; result.overall_score=74; }\n    }\n    const formatError=errors.length?errors.join('; '):null;\n    return {json:{...result,source_product:product.source_problem,opportunity_id:product.opportunity_id || null,source_id:product.source_id || null,source_url:product.source_url || null,destination_country:product.destination_country || 'FR',evaluation_key:product.evaluation_key || (product.source_problem+'|'+product.product_id+'|FR'),phase3_retry_count:Number(product.phase3_retry_count || 0),product_name:product.title,product_url:product.url,search_query:product.search_query,batch_id:batch.batch_id,prompt_version:'product-evaluator-strict-v3',format_error:formatError,model_metadata:metadata,raw_response_chars:raw.length}};\n  });\n});"
+      },
+      "id": "validate",
+      "name": "Validate every Phase 3 result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        390,
+        20
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/VOTRE_ID_GOOGLE_SHEET/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1639288877,
+          "mode": "list",
+          "cachedResultName": "ai selected products"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "product_name": "={{ $json.product_name + ' [' + $json.product_id + ']' }}",
+            "product_link": "={{ ['hold','shortlist'].includes(String($json.verdict || '').toLowerCase()) ? '=HYPERLINK(\"' + $json.product_url + '\";\"Open product\")' : '' }}",
+            "recommendation": "={{ $json.verdict.toUpperCase() }}",
+            "final_score": "={{ $json.overall_score }}",
+            "competition_level": "NOT_MEASURED",
+            "resoning": "={{ ($json.reasoning_short || '') + ' | ' + JSON.stringify({source_problem:$json.source_product,reason_code:$json.reason_code,confidence:$json.confidence,risks:$json.risks || [],next_validation_steps:$json.next_validation_steps || [],url:$json.product_url}) }}",
+            "status": "={{ 'PHASE3_' + ($json.reason_code === 'AI_FORMAT_ERROR' ? 'RETRY' : $json.verdict.toUpperCase()) }}",
+            "opportunity_id": "={{ $json.opportunity_id }}",
+            "product_id": "={{ $json.product_id }}",
+            "destination_country": "={{ $json.destination_country }}",
+            "evaluation_key": "={{ $json.evaluation_key }}",
+            "prompt_version": "={{ $json.prompt_version }}"
+          },
+          "matchingColumns": [
+            "evaluation_key"
+          ],
+          "schema": [
+            {
+              "id": "product_name",
+              "displayName": "product_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "product_link",
+              "displayName": "product_link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "recommendation",
+              "displayName": "recommendation",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "final_score",
+              "displayName": "final_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "competition_level",
+              "displayName": "competition_level",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "resoning",
+              "displayName": "resoning",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "opportunity_id", "displayName": "opportunity_id", "required": false,
+              "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true
+            },
+            {
+              "id": "product_id", "displayName": "product_id", "required": false,
+              "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true
+            },
+            {
+              "id": "destination_country", "displayName": "destination_country", "required": false,
+              "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true
+            },
+            {
+              "id": "evaluation_key", "displayName": "evaluation_key", "required": false,
+              "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true
+            },
+            {
+              "id": "prompt_version", "displayName": "prompt_version", "required": false,
+              "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "review",
+      "name": "Write HOLD and SHORTLIST links with every decision",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        650,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $('Validate every Phase 3 result').all().map(item=>{ const row=item.json; const retry=row.reason_code === 'AI_FORMAT_ERROR'; const retryCount=Number(row.phase3_retry_count || 0)+(retry?1:0); const exhausted=retryCount>=5; const delayMinutes=Math.min(1440,30*Math.pow(2,Math.max(0,retryCount-1))); return {json:{'product name':row.source_product,link:row.product_url,opportunity_id:row.opportunity_id,product_id:row.product_id,destination_country:row.destination_country,evaluation_key:row.evaluation_key,status:retry?(exhausted?'PHASE3_FAILED':'PHASE3_RETRY'):'PHASE3_'+String(row.verdict || 'hold').toUpperCase(),phase3_retry_count:retryCount,phase3_next_retry_at:retry&&!exhausted?new Date(Date.now()+delayMinutes*60000).toISOString():'',phase3_error:retry?row.reasoning_short:''}}; });"
+      },
+      "id": "source-status",
+      "name": "Prepare verdict and product links",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        890,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/VOTRE_ID_GOOGLE_SHEET/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1922860688,
+          "mode": "list",
+          "cachedResultName": "Found items online"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "product name": "={{ $json['product name'] }}",
+            "link": "={{ $json.link }}",
+            "status": "={{ $json.status }}",
+            "opportunity_id": "={{ $json.opportunity_id }}",
+            "product_id": "={{ $json.product_id }}",
+            "destination_country": "={{ $json.destination_country }}",
+            "evaluation_key": "={{ $json.evaluation_key }}",
+            "phase3_retry_count": "={{ $json.phase3_retry_count }}",
+            "phase3_next_retry_at": "={{ $json.phase3_next_retry_at }}",
+            "phase3_error": "={{ $json.phase3_error }}"
+          },
+          "matchingColumns": [
+            "evaluation_key"
+          ],
+          "schema": [
+            {
+              "id": "product name",
+              "displayName": "product name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "link",
+              "displayName": "link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "opportunity_id", "displayName": "opportunity_id", "required": false,
+              "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true
+            },
+            {
+              "id": "product_id", "displayName": "product_id", "required": false,
+              "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true
+            },
+            {
+              "id": "destination_country", "displayName": "destination_country", "required": false,
+              "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true
+            },
+            {
+              "id": "evaluation_key", "displayName": "evaluation_key", "required": false,
+              "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true
+            },
+            {
+              "id": "phase3_retry_count", "displayName": "phase3_retry_count", "required": false,
+              "defaultMatch": false, "display": true, "type": "number", "canBeUsedToMatch": true
+            },
+            {
+              "id": "phase3_next_retry_at", "displayName": "phase3_next_retry_at", "required": false,
+              "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true
+            },
+            {
+              "id": "phase3_error", "displayName": "phase3_error", "required": false,
+              "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "mark",
+      "name": "Mark Found products Phase 3 evaluated",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1120,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const seen=new Set(); return $('Validate every Phase 3 result').all().flatMap(item=>{ const row=item.json; if(seen.has(row.batch_id)) return []; seen.add(row.batch_id); const metadata=row.model_metadata || {}; const usage=metadata.tokenUsage || metadata.usage || metadata; const input=Number(usage.input_tokens ?? usage.prompt_tokens ?? usage.promptTokens); const output=Number(usage.output_tokens ?? usage.completion_tokens ?? usage.completionTokens); const providerTotal=Number(usage.total_tokens ?? usage.totalTokens); const actual=Number.isFinite(providerTotal) || (Number.isFinite(input)&&Number.isFinite(output)); const batch=$('Build evidence batches of 5').all().find(x=>Number(x.json.batch_id)===Number(row.batch_id))?.json || {products:[]}; const estimatedInput=Math.ceil((3500+JSON.stringify(batch.products).length)/4); const estimatedOutput=Math.ceil(Number(row.raw_response_chars || 0)/4); const actualInput=Number.isFinite(input)?input:0; const actualOutput=Number.isFinite(output)?output:0; const total=actual?(Number.isFinite(providerTotal)?Math.max(providerTotal,actualInput+actualOutput):actualInput+actualOutput):estimatedInput+estimatedOutput; return [{json:{run_id:$execution.id+'-batch-'+row.batch_id,timestamp:new Date().toISOString(),workflow:'aliexpress_product_evaluation',prompt_version:row.prompt_version,model:actual?String(usage.model || 'provider-reported-model'):'configured-in-n8n',status:'SUCCESS',input_tokens:actual?actualInput:estimatedInput,output_tokens:actual?actualOutput:estimatedOutput,total_tokens:total,token_source:actual?'actual':'estimated',estimated_cost_usd:null,candidates_in_call:batch.products.length,batch_id:row.batch_id}}]; });"
+      },
+      "id": "usage",
+      "name": "Record Phase 3 actual-or-estimated usage",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        650,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($vars.DISCOVERY_API_BASE || 'http://host.docker.internal:8789') + '/ai-usage' }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "log",
+      "name": "Log Phase 3 usage locally",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        890,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Phase 3 full evidence test\n- Reads all current `RESEARCHED` AliExpress rows (up to 50).\n- Fetches the stored product URL and evidence before the AI call.\n- Joins the original Phase 1 problem evidence before evaluation.\n- Uses batches of 5 and writes every decision or format error for review.\n- Missing critical dimensions prevents SHORTLIST.\n- Keeps each direct link in `Found items online` and labels it `PHASE3_HOLD`, `PHASE3_SHORTLIST`, `PHASE3_REJECT`, or `PHASE3_RETRY`.\n- Logs exact provider tokens when exposed; otherwise labels them `estimated`.\n\nStart APIs on ports 8787 and 8789. Select the same Qwen model that passed Phase 1.",
+        "height": 350,
+        "width": 540,
+        "color": 5
+      },
+      "id": "note",
+      "name": "Phase 3 test instructions",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1180,
+        -350
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Phase 3 test trigger": {
+      "main": [
+        [
+          {
+            "node": "Check AliExpress API health",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Phase 3 from orchestrator": {
+      "main": [[{"node": "Check AliExpress API health", "type": "main", "index": 0}]]
+    },
+    "Check AliExpress API health": {
+      "main": [[
+        {"node": "Get researched opportunity evidence", "type": "main", "index": 0},
+        {"node": "Get products awaiting Phase 3", "type": "main", "index": 0}
+      ]]
+    },
+    "Get researched opportunity evidence": {
+      "main": [
+        [
+          {
+            "node": "Wait for evidence and products",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get products awaiting Phase 3": {
+      "main": [
+        [
+          {
+            "node": "Wait for evidence and products",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Wait for evidence and products": {
+      "main": [
+        [
+          {
+            "node": "Join evidence and select up to 50 products",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Join evidence and select up to 50 products": {
+      "main": [
+        [
+          {
+            "node": "Get stored AliExpress evidence",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get stored AliExpress evidence": {
+      "main": [
+        [
+          {
+            "node": "Build evidence batches of 5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build evidence batches of 5": {
+      "main": [
+        [
+          {
+            "node": "AI - Strict product evaluation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configure Phase 3 AI model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI - Strict product evaluation",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI - Strict product evaluation": {
+      "main": [
+        [
+          {
+            "node": "Validate every Phase 3 result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate every Phase 3 result": {
+      "main": [
+        [
+          {
+            "node": "Write HOLD and SHORTLIST links with every decision",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Record Phase 3 actual-or-estimated usage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write HOLD and SHORTLIST links with every decision": {
+      "main": [
+        [
+          {
+            "node": "Prepare verdict and product links",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare verdict and product links": {
+      "main": [
+        [
+          {
+            "node": "Mark Found products Phase 3 evaluated",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Phase 3 actual-or-estimated usage": {
+      "main": [
+        [
+          {
+            "node": "Log Phase 3 usage locally",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "phase3-full-evidence-test-v1",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

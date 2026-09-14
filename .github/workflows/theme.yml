@@ -1,4 +1,4 @@
-name: Thème — contrôler et déployer
+name: Thème : contrôler et déployer
 
 on:
   pull_request:
@@ -40,7 +40,7 @@ jobs:
 
       # Garde-fou DA : aucune couleur en dur hors de base.css et des snippets
       # de réglages. Si quelqu'un colle un #ff0000 dans une section, la CI le
-      # refuse — c'est ce qui empêche la palette de se disperser.
+      # refuse : c'est ce qui empêche la palette de se disperser.
       # Deux exceptions documentees, aucune autre :
       #   - reglages-css.liquid est LE robinet qui transforme un reglage
       #     marchand en couleur (voir base.css).

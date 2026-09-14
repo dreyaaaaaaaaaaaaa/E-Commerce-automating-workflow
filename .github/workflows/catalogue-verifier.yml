@@ -1,4 +1,4 @@
-name: Catalogue — vérifier
+name: Catalogue : vérifier
 
 # Se déclenche sur toute PR touchant le catalogue source.
 # Volontairement `pull_request` et non `pull_request_target` : une PR venant

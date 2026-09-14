@@ -1,4 +1,4 @@
-name: Catalogue — pousser le lot
+name: Catalogue : pousser le lot
 
 # Déclenchement manuel uniquement. Écrire dans un catalogue de production
 # n'est pas un effet de bord d'un `git push` : c'est une décision, prise

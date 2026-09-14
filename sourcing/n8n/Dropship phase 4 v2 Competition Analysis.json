@@ -1,0 +1,812 @@
+{
+  "name": "Dropship phase 4 v2 - Measured AliExpress Competition",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger",
+      "name": "Manual Phase 4 test trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1320,
+        80
+      ]
+    },
+    {
+      "parameters": {"inputSource": "passthrough"},
+      "id": "trigger-subworkflow-phase4",
+      "name": "Run Phase 4 from orchestrator",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [-1320, 180]
+    },
+    {
+      "parameters": {
+        "url": "={{ ($vars.ALIEXPRESS_API_BASE || 'http://host.docker.internal:8787') + '/health' }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "health-aliexpress",
+      "name": "Check AliExpress API health",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -1210,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/VOTRE_ID_GOOGLE_SHEET/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1639288877,
+          "mode": "list",
+          "cachedResultName": "ai selected products"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "recommendation",
+              "lookupValue": "HOLD"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "holds",
+      "name": "Get Phase 3 HOLD products",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1110,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/VOTRE_ID_GOOGLE_SHEET/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1639288877,
+          "mode": "list",
+          "cachedResultName": "ai selected products"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "recommendation",
+              "lookupValue": "SHORTLIST"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "shortlists",
+      "name": "Get Phase 3 SHORTLIST products",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1110,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/VOTRE_ID_GOOGLE_SHEET/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1922860688,
+          "mode": "list",
+          "cachedResultName": "Found items online"
+        },
+        "options": {}
+      },
+      "id": "found",
+      "name": "Get researched product rows",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -890,
+        250
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "append"
+      },
+      "id": "eligible-merge",
+      "name": "Combine HOLD and SHORTLIST",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -870,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "append"
+      },
+      "id": "evidence-merge",
+      "name": "Wait for eligible and source rows",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -650,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows=$input.all().map(item=>item.json);\nconst eligible=rows.filter(row=>['HOLD','SHORTLIST'].includes(String(row.recommendation || '').toUpperCase()));\nconst foundRows=rows.filter(row=>row['product name'] && row.link);\nconst idFrom=value=>String(value || '').match(/(?:item\\/|\\[)(\\d{10,})(?:\\.html|\\])?/)?.[1] || null;\nconst keyFor=row=>String(row.evaluation_key || ((row.opportunity_id || '')+'|'+(row.product_id || idFrom(row.link) || idFrom(row.product_name) || '')+'|'+(row.destination_country || 'FR')));\nconst foundByKey=new Map(); for(const row of foundRows){ const key=keyFor(row); if(key && !foundByKey.has(key)) foundByKey.set(key,row); }\nconst targets=[]; const seenTargets=new Set();\nfor(const decision of eligible){ const productId=String(decision.product_id || idFrom(decision.product_name) || idFrom(decision.resoning) || ''); const evaluationKey=keyFor({...decision,product_id:productId}); if(!productId || seenTargets.has(evaluationKey)) continue; let source=foundByKey.get(evaluationKey); if(!source){ const matches=foundRows.filter(row=>String(row.product_id || idFrom(row.link) || '')===productId); if(matches.length===1) source=matches[0]; } if(!source) continue; const priceMatch=String(source.price || '').replace(',','.').match(/([0-9]+(?:\\.[0-9]+)?)/); const currency=String(source.currency || String(source.price || '').match(/\\b([A-Z]{3})\\b/)?.[1] || '').toUpperCase() || null; const searchQuery=String(source['search query'] || '').trim().toLowerCase(); if(!searchQuery) continue; seenTargets.add(evaluationKey); targets.push({product_name:decision.product_name,opportunity_id:source.opportunity_id || decision.opportunity_id || null,evaluation_key:evaluationKey,destination_country:String(source.destination_country || decision.destination_country || 'FR').toUpperCase(),phase3_verdict:String(decision.recommendation).toUpperCase(),phase3_score:Number(decision.final_score || 0),product_id:productId,target_title:String(source.title || decision.product_name).replace(/\\s*\\[\\d{10,}\\]\\s*$/,''),target_url:String(source.link),target_price:priceMatch?Number(priceMatch[1]):null,target_currency:currency,source_problem:String(source['product name'] || ''),search_query:searchQuery}); }\nconst groups=new Map();\nfor(const target of targets){ const groupKey=(target.opportunity_id || target.source_problem.toLowerCase())+'|'+target.destination_country+'|'+target.search_query; if(!groups.has(groupKey)) groups.set(groupKey,{group_key:groupKey,opportunity_id:target.opportunity_id,destination_country:target.destination_country,source_problem:target.source_problem,search_query:target.search_query,targets:[]}); groups.get(groupKey).targets.push(target); }\nreturn [...groups.values()].map(group=>{ group.targets.sort((a,b)=>b.phase3_score-a.phase3_score || (a.phase3_verdict==='SHORTLIST'?-1:1)); return {json:{...group,target:group.targets[0],target_count:group.targets.length}}; });"
+      },
+      "id": "prepare",
+      "name": "Join eligible products to search queries",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -430,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($vars.ALIEXPRESS_API_BASE || 'http://host.docker.internal:8787') + '/search' }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({query:$json.search_query,country:'FR',limit:50,details:0,browser_channel:'chrome',headless:false,wait_seconds:20,captcha_wait_seconds:180,captcha_policy:'wait'}) }}",
+        "options": {
+          "timeout": 420000
+        }
+      },
+      "id": "search",
+      "name": "Collect 50 real AliExpress results",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -210,
+        80
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "jsCode": "const responses=$input.all(); const groups=$('Join eligible products to search queries').all(); return responses.map((item,index)=>{ const group=groups[index]?.json || {}; const response=item.json || {}; const results=Array.isArray(response.search?.results)?response.search.results:[]; const candidates=results.slice(0,50).map(row=>({product_id:String(row.product_id || ''),title:row.title || null,price:row.min_price ?? null,currency:row.currency || null,rating:row.rating ?? null,review_count:row.review_count ?? null,orders_count:row.orders_count ?? null,store_id:row.store_id || null,store_name:row.store_name || null})).filter(row=>row.product_id && row.title); const targets=Array.isArray(group.targets)?group.targets:[]; const representative=group.target || targets[0] || {}; return {json:{prompt_version:'competition-comparability-v3',group_key:group.group_key,opportunity:{opportunity_id:group.opportunity_id || null,destination_country:group.destination_country || 'FR',source_problem:group.source_problem || null,search_query:group.search_query || null,eligible_target_titles:targets.map(target=>target.target_title).filter(Boolean).slice(0,10)},target:{product_id:representative.product_id,opportunity_id:representative.opportunity_id || group.opportunity_id || null,evaluation_key:representative.evaluation_key,destination_country:representative.destination_country || group.destination_country || 'FR',title:representative.target_title,url:representative.target_url,price:representative.target_price,currency:representative.target_currency,phase3_verdict:representative.phase3_verdict,source_problem:representative.source_problem || group.source_problem},targets,search_query:group.search_query,search_run_id:response.search_run_id || null,search_status:response.status || 'error',search_warnings:response.search?.warnings || [],sample_size:candidates.length,candidates}}; });"
+      },
+      "id": "payloads",
+      "name": "Build comparability payloads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        10,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ JSON.stringify($json) }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are a conservative ecommerce market-comparability classifier. Evaluate every supplied AliExpress candidate once against the shared opportunity, source problem, and exact search query. The eligible target titles are context only; do not repeat the analysis for each target listing. Classify direct only when the candidate belongs to the same functional product family and is a realistic substitute for the same customer job. Classify adjacent when related but a different product type, accessory, refill, replacement part, or partial solution. Classify not_comparable when unrelated, keyword spam, or intended for another job. Do not require proof of every special source constraint: Phase 3 already judged individual product fit. Do not infer missing sales, quality, shipping, dimensions, specifications, brand, seller identity, or demand. Classify every supplied candidate product_id exactly once and never invent IDs. Return one JSON object only: {\"prompt_version\":\"competition-comparability-v3\",\"results\":[{\"product_id\":\"id\",\"class\":\"direct|adjacent|not_comparable\",\"confidence\":80,\"reason\":\"maximum 12 words\"}]}. Confidence must be an integer from 50 to 100; never return 0 or null. No markdown, hidden analysis, or extra fields."
+            }
+          ]
+        }
+      },
+      "id": "ai",
+      "name": "AI - Classify direct competitors only",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 10000,
+      "position": [
+        250,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "qwen3.8-flash",
+          "mode": "list",
+          "cachedResultName": "qwen3.8-flash"
+        },
+        "responsesApiEnabled": false,
+        "options": {
+          "temperature": 0,
+          "maxTokens": 1800
+        }
+      },
+      "id": "model",
+      "name": "Configure Phase 4 Qwen model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        250,
+        310
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const responses=$input.all(); const payloads=$('Build comparability payloads').all();\nconst quantile=(values,q)=>{ if(!values.length) return null; const sorted=[...values].sort((a,b)=>a-b); const pos=(sorted.length-1)*q; const lo=Math.floor(pos),hi=Math.ceil(pos); return lo===hi?sorted[lo]:sorted[lo]+(sorted[hi]-sorted[lo])*(pos-lo); };\nreturn responses.map((item,index)=>{ const payload=payloads[index]?.json || {target:{},candidates:[]}; const raw=String(item.json.text || '').replace(/\\x60\\x60\\x60json/gi,'').replace(/\\x60\\x60\\x60/g,'').trim(); let parsedResults=[]; let formatError=null; try{ const parsed=JSON.parse(raw); parsedResults=Array.isArray(parsed)?parsed:parsed.results; if(!Array.isArray(parsedResults)) throw new Error('results is not an array'); }catch(error){ formatError=error.message; } const allowed=new Set(payload.candidates.map(c=>String(c.product_id))); const classes=new Map(); for(const row of parsedResults){ const id=String(row.product_id || ''); const cls=String(row.class || '').toLowerCase(); if(!allowed.has(id) || !['direct','adjacent','not_comparable'].includes(cls) || classes.has(id)) continue; classes.set(id,{class:cls,confidence:Number(row.confidence || 0),reason:String(row.reason || '').slice(0,120)}); } const coverage=payload.candidates.length?classes.size/payload.candidates.length:0; const direct=payload.candidates.filter(c=>{ const result=classes.get(String(c.product_id)); return result?.class==='direct' && result.confidence>=60; }); const sampleSize=payload.candidates.length; const directCount=direct.length; const directShare=sampleSize?directCount/sampleSize:0; const stores=new Set(direct.map(c=>c.store_id || c.store_name).filter(Boolean)); const sameCurrencyPrices=direct.filter(c=>Number.isFinite(Number(c.price)) && (!payload.target.currency || c.currency===payload.target.currency)).map(c=>Number(c.price)); const prices=direct.filter(c=>Number.isFinite(Number(c.price))).map(c=>Number(c.price)); const priceValues=sameCurrencyPrices.length?sameCurrencyPrices:prices; const orderRows=direct.filter(c=>Number.isFinite(Number(c.orders_count))); const orderValues=orderRows.map(c=>Number(c.orders_count)); const totalOrders=orderValues.reduce((sum,n)=>sum+n,0); const top3Orders=[...orderValues].sort((a,b)=>b-a).slice(0,3).reduce((sum,n)=>sum+n,0); let level='INSUFFICIENT_DATA'; if(!formatError && sampleSize>=15 && coverage>=0.8){ if(directCount>=18 || (directCount>=12 && directShare>=0.5)) level='HIGH'; else if(directCount>=7) level='MEDIUM'; else level='LOW'; } const saturationScore=Math.round(Math.min(100,45*Math.min(directCount/20,1)+25*directShare+15*Math.min(stores.size/10,1)+15*(directCount?orderRows.length/directCount:0))); const median=quantile(priceValues,0.5); const q1=quantile(priceValues,0.25); const q3=quantile(priceValues,0.75); const money=n=>n===null?'n/a':Number(n).toFixed(2)+(payload.target.currency?' '+payload.target.currency:''); const evidence=level==='INSUFFICIENT_DATA'?'AliExpress sample insufficient: '+sampleSize+' listings, '+classes.size+' classified ('+Math.round(coverage*100)+'% coverage)'+(formatError?'; AI JSON error: '+formatError:'')+'.':'AliExpress sample: '+directCount+'/'+sampleSize+' direct competitors ('+Math.round(directShare*100)+'%); '+(stores.size || 'unknown')+' distinct sellers; median price '+money(median)+' (Q1 '+money(q1)+', Q3 '+money(q3)+'); order data on '+orderRows.length+'/'+directCount+(totalOrders>0?'; top-3 order share '+Math.round(100*top3Orders/totalOrders)+'%':'')+'.'; const metadata=item.json.response_metadata || item.json.usage_metadata || item.json.usage || null; return {json:{product_name:payload.target.title+' ['+payload.target.product_id+']',product_id:payload.target.product_id,product_url:payload.target.url,source_problem:payload.target.source_problem,search_query:payload.search_query,competition_level:level,competition_score:saturationScore,competition_evidence:evidence,measurement_scope:'ALIEXPRESS_SEARCH_SAMPLE',sample_size:sampleSize,direct_competitors:directCount,direct_share:Number(directShare.toFixed(3)),distinct_sellers:stores.size || null,median_price:median===null?null:Number(median.toFixed(2)),price_currency:payload.target.currency || direct.find(c=>c.currency)?.currency || null,order_data_count:orderRows.length,top3_order_share:totalOrders>0?Number((top3Orders/totalOrders).toFixed(3)):null,classification_coverage:Number(coverage.toFixed(3)),search_run_id:payload.search_run_id,search_status:payload.search_status,format_error:formatError,prompt_version:'competition-comparability-v1',model_metadata:metadata,raw_response_chars:raw.length,status:level==='INSUFFICIENT_DATA'?'PHASE4_RETRY':'PHASE4_COMPETITION_MEASURED'}}; });"
+      },
+      "id": "metrics",
+      "name": "Calculate measured competition LEGACY - disabled",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        490,
+        20
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const responses=$input.all();\nconst payloads=$('Build comparability payloads').all();\nconst asNumber=value=>{ if(value===null || value===undefined || value==='') return null; const parsed=Number(value); return Number.isFinite(parsed)?parsed:null; };\nconst quantile=(values,q)=>{ if(!values.length) return null; const sorted=[...values].sort((a,b)=>a-b); const pos=(sorted.length-1)*q; const lo=Math.floor(pos),hi=Math.ceil(pos); return lo===hi?sorted[lo]:sorted[lo]+(sorted[hi]-sorted[lo])*(pos-lo); };\nreturn responses.map((item,index)=>{\n  const payload=payloads[index]?.json || {target:{},candidates:[]};\n  const raw=String(item.json.text || '').replace(/\\x60\\x60\\x60json/gi,'').replace(/\\x60\\x60\\x60/g,'').trim();\n  let parsedResults=[]; let formatError=null;\n  try { const parsed=JSON.parse(raw); parsedResults=Array.isArray(parsed)?parsed:parsed.results; if(!Array.isArray(parsedResults)) throw new Error('results is not an array'); } catch(error){ formatError=error.message; }\n  const allowed=new Set(payload.candidates.map(c=>String(c.product_id)));\n  const classes=new Map();\n  for(const row of parsedResults){ const id=String(row?.product_id || ''); const cls=String(row?.class || '').toLowerCase(); const confidence=asNumber(row?.confidence); if(!allowed.has(id) || !['direct','adjacent','not_comparable'].includes(cls) || classes.has(id)) continue; classes.set(id,{class:cls,confidence,reason:String(row.reason || '').slice(0,120)}); }\n  const sampleSize=payload.candidates.length;\n  const classificationCoverage=sampleSize?classes.size/sampleSize:0;\n  const usableClasses=new Map([...classes].filter(([,value])=>value.confidence!==null && value.confidence>=60));\n  const usableCoverage=sampleSize?usableClasses.size/sampleSize:0;\n  const direct=payload.candidates.filter(c=>usableClasses.get(String(c.product_id))?.class==='direct');\n  const directCount=direct.length; const directShare=sampleSize?directCount/sampleSize:0;\n  const stores=new Set(direct.map(c=>c.store_id || c.store_name).filter(Boolean));\n  const targetCurrency=String(payload.target?.currency || '').toUpperCase() || null;\n  const priced=direct.map(c=>({value:asNumber(c.price),currency:String(c.currency || '').toUpperCase() || null})).filter(c=>c.value!==null && c.currency);\n  const currencies=new Set(priced.map(c=>c.currency));\n  let priceCurrency=null; let priceValues=[];\n  if(targetCurrency){ priceValues=priced.filter(c=>c.currency===targetCurrency).map(c=>c.value); if(priceValues.length) priceCurrency=targetCurrency; }\n  else if(currencies.size===1){ priceCurrency=[...currencies][0]; priceValues=priced.map(c=>c.value); }\n  const orderRows=direct.map(c=>asNumber(c.orders_count)).filter(value=>value!==null);\n  const totalOrders=orderRows.reduce((sum,n)=>sum+n,0);\n  const top3Orders=[...orderRows].sort((a,b)=>b-a).slice(0,3).reduce((sum,n)=>sum+n,0);\n  let level='INSUFFICIENT_DATA';\n  if(!formatError && sampleSize>=8 && usableCoverage>=0.8){ if(directCount>=12 || (directCount>=6 && directShare>=0.75)) level='HIGH'; else if(directCount>=7 || (directCount>=4 && directShare>=0.4)) level='MEDIUM'; else level='LOW'; }\n  const competitionScore=level==='INSUFFICIENT_DATA'?null:Math.round(Math.min(100,45*Math.min(directCount/20,1)+25*directShare+15*Math.min(stores.size/10,1)+15*(directCount?orderRows.length/directCount:0)));\n  const median=quantile(priceValues,0.5); const q1=quantile(priceValues,0.25); const q3=quantile(priceValues,0.75);\n  const money=n=>n===null?'n/a':Number(n).toFixed(2)+(priceCurrency?' '+priceCurrency:'');\n  const evidence=level==='INSUFFICIENT_DATA'?'AliExpress sample insufficient: '+sampleSize+' listings, '+classes.size+' classified, '+usableClasses.size+' usable at confidence >=60 ('+Math.round(usableCoverage*100)+'% usable coverage)'+(formatError?'; AI JSON error: '+formatError:'')+'.':'AliExpress sample: '+directCount+'/'+sampleSize+' direct competitors ('+Math.round(directShare*100)+'%); '+(stores.size || 'seller data unavailable')+' distinct sellers; '+priceValues.length+' same-currency prices, median '+money(median)+' (Q1 '+money(q1)+', Q3 '+money(q3)+'); order data on '+orderRows.length+'/'+directCount+(totalOrders>0?'; top-3 order share '+Math.round(100*top3Orders/totalOrders)+'%':'')+'.';\n  const metadata=item.json.response_metadata || item.json.usage_metadata || item.json.usage || null;\n  return {json:{product_name:payload.target.title+' ['+payload.target.product_id+']',opportunity_id:payload.target.opportunity_id || null,evaluation_key:payload.target.evaluation_key,destination_country:payload.target.destination_country || 'FR',product_id:payload.target.product_id,product_url:payload.target.url,source_problem:payload.target.source_problem,search_query:payload.search_query,competition_level:level,competition_score:competitionScore,competition_evidence:evidence,measurement_scope:'ALIEXPRESS_SEARCH_SAMPLE',sample_size:sampleSize,direct_competitors:directCount,direct_share:Number(directShare.toFixed(3)),distinct_sellers:stores.size || null,median_price:median===null?null:Number(median.toFixed(2)),price_currency:priceCurrency,price_observation_count:priceValues.length,order_data_count:orderRows.length,top3_order_share:totalOrders>0?Number((top3Orders/totalOrders).toFixed(3)):null,classification_coverage:Number(classificationCoverage.toFixed(3)),usable_classification_coverage:Number(usableCoverage.toFixed(3)),search_run_id:payload.search_run_id,search_status:payload.search_status,format_error:formatError,prompt_version:'competition-comparability-v2',model_metadata:metadata,raw_response_chars:raw.length,status:level==='INSUFFICIENT_DATA'?'PHASE4_RETRY':'PHASE4_COMPETITION_MEASURED'}};\n});"
+      },
+      "id": "metrics-fixed",
+      "name": "Calculate measured competition",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        490,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const measurements=$input.all();\nconst payloads=$('Build comparability payloads').all();\nreturn measurements.flatMap((item,index)=>{\n  const measurement=item.json || {};\n  const payload=payloads[index]?.json || {};\n  const targets=Array.isArray(payload.targets) && payload.targets.length ? payload.targets : [payload.target || {}];\n  return targets.filter(target=>target.product_id && target.evaluation_key).map(target=>({json:{...measurement,product_name:String(target.target_title || target.title || measurement.product_name || '')+' ['+target.product_id+']',opportunity_id:target.opportunity_id || payload.opportunity?.opportunity_id || measurement.opportunity_id || null,evaluation_key:target.evaluation_key,destination_country:target.destination_country || payload.opportunity?.destination_country || 'FR',product_id:target.product_id,product_url:target.target_url || target.url || null,source_problem:target.source_problem || payload.opportunity?.source_problem || measurement.source_problem || null,search_query:payload.search_query || measurement.search_query,group_key:payload.group_key || null,grouped_target_count:targets.length,prompt_version:'competition-comparability-v3'}}));\n});"
+      },
+      "id": "expand-grouped-competition",
+      "name": "Expand competition to grouped products",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        710,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/VOTRE_ID_GOOGLE_SHEET/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1639288877,
+          "mode": "list",
+          "cachedResultName": "ai selected products"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "product_name": "={{ $json.product_name }}",
+            "competition_level": "={{ $json.competition_level }}",
+            "competition_evidence": "={{ $json.competition_evidence + ' | ' + JSON.stringify({scope:$json.measurement_scope,score:$json.competition_score,search_query:$json.search_query,search_run_id:$json.search_run_id,direct_share:$json.direct_share,classification_coverage:$json.classification_coverage}) }}",
+            "status": "={{ $json.status }}",
+            "opportunity_id": "={{ $json.opportunity_id }}",
+            "product_id": "={{ $json.product_id }}",
+            "destination_country": "={{ $json.destination_country }}",
+            "evaluation_key": "={{ $json.evaluation_key }}"
+          },
+          "matchingColumns": [
+            "evaluation_key"
+          ],
+          "schema": [
+            {
+              "id": "product_name",
+              "displayName": "product_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "competition_level",
+              "displayName": "competition_level",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "competition_evidence",
+              "displayName": "competition_evidence",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "opportunity_id",
+              "displayName": "opportunity_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "product_id",
+              "displayName": "product_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "destination_country",
+              "displayName": "destination_country",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "evaluation_key",
+              "displayName": "evaluation_key",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "write",
+      "name": "Write measured competition to review sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        940,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $('Expand competition to grouped products').all().map(item=>({json:{'product name':item.json.source_problem,link:item.json.product_url,opportunity_id:item.json.opportunity_id,product_id:item.json.product_id,destination_country:item.json.destination_country,evaluation_key:item.json.evaluation_key,status:item.json.status}}));"
+      },
+      "id": "source-status",
+      "name": "Prepare Phase 4 source status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1170,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/VOTRE_ID_GOOGLE_SHEET/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1922860688,
+          "mode": "list",
+          "cachedResultName": "Found items online"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "product name": "={{ $json['product name'] }}",
+            "link": "={{ $json.link }}",
+            "status": "={{ $json.status }}",
+            "opportunity_id": "={{ $json.opportunity_id }}",
+            "product_id": "={{ $json.product_id }}",
+            "destination_country": "={{ $json.destination_country }}",
+            "evaluation_key": "={{ $json.evaluation_key }}"
+          },
+          "matchingColumns": [
+            "evaluation_key"
+          ],
+          "schema": [
+            {
+              "id": "product name",
+              "displayName": "product name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "link",
+              "displayName": "link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "opportunity_id",
+              "displayName": "opportunity_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "product_id",
+              "displayName": "product_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "destination_country",
+              "displayName": "destination_country",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "evaluation_key",
+              "displayName": "evaluation_key",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "mark",
+      "name": "Mark source product Phase 4 measured",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1400,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows=$input.all(); const payloads=$('Build comparability payloads').all(); return rows.map((item,index)=>{ const row=item.json; const key=String(row.search_run_id || index); const metadata=row.model_metadata || {}; const usage=metadata.tokenUsage || metadata.usage || metadata; const input=Number(usage.input_tokens ?? usage.prompt_tokens ?? usage.promptTokens); const output=Number(usage.output_tokens ?? usage.completion_tokens ?? usage.completionTokens); const providerTotal=Number(usage.total_tokens ?? usage.totalTokens); const actual=Number.isFinite(providerTotal) || (Number.isFinite(input)&&Number.isFinite(output)); const payload=payloads[index]?.json || {}; const estimatedInput=Math.ceil((2600+JSON.stringify(payload).length)/4); const estimatedOutput=Math.ceil(Number(row.raw_response_chars || 0)/4); const actualInput=Number.isFinite(input)?input:0; const actualOutput=Number.isFinite(output)?output:0; const total=actual?(Number.isFinite(providerTotal)?Math.max(providerTotal,actualInput+actualOutput):actualInput+actualOutput):estimatedInput+estimatedOutput; const usageStatus=row.status==='PHASE4_COMPETITION_MEASURED'?'SUCCESS':row.status==='PHASE4_RETRY'?'RETRY':'FAILED'; return {json:{run_id:$execution.id+'-competition-'+key,timestamp:new Date().toISOString(),workflow:'aliexpress_competition_analysis',prompt_version:'competition-comparability-v3',model:actual?String(usage.model || 'provider-reported-model'):'configured-in-n8n',status:usageStatus,input_tokens:actual?actualInput:estimatedInput,output_tokens:actual?actualOutput:estimatedOutput,total_tokens:total,token_source:actual?'actual':'estimated',estimated_cost_usd:null,candidates_in_call:Number(row.sample_size || 0),search_run_id:row.search_run_id,grouped_target_count:Array.isArray(payload.targets)?payload.targets.length:1}}; });"
+      },
+      "id": "usage",
+      "name": "Record Phase 4 actual-or-estimated usage",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        710,
+        210
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($vars.DISCOVERY_API_BASE || 'http://host.docker.internal:8789') + '/ai-usage' }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "log",
+      "name": "Log Phase 4 usage locally",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        940,
+        210
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item=>({json:{product:item.json.product_name,competition_level:item.json.competition_level,competition_score:item.json.competition_score,evidence:item.json.competition_evidence,status:item.json.status}}));"
+      },
+      "id": "review",
+      "name": "Review measured competition",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        940,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Phase 4 - grouped measured competition\n- Processes only Phase 3 HOLD and SHORTLIST.\n- Groups eligible products by opportunity, destination and search query.\n- Opens visible Chrome once per unique opportunity/query and collects up to 50 real AliExpress results.\n- Runs one AI comparability call per group, then applies the shared market measurement to every product in that group.\n- Code calculates LOW, MEDIUM, HIGH, or INSUFFICIENT_DATA.\n- Competition means AliExpress search-sample saturation, not total global market competition.\n- Writes evidence beside competition_level and logs one token record per group on port 8789.\n\nBefore running: keep ports 8787 and 8789 open, select the same Qwen credential/model used previously, and select Google Sheets credentials.",
+        "height": 360,
+        "width": 560,
+        "color": 5
+      },
+      "id": "note",
+      "name": "Phase 4 instructions",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1320,
+        -450
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Phase 4 test trigger": {
+      "main": [
+        [
+          {
+            "node": "Check AliExpress API health",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Phase 4 from orchestrator": {
+      "main": [[{"node": "Check AliExpress API health", "type": "main", "index": 0}]]
+    },
+    "Check AliExpress API health": {
+      "main": [
+        [
+          {
+            "node": "Get Phase 3 HOLD products",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Phase 3 SHORTLIST products",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get researched product rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Phase 3 HOLD products": {
+      "main": [
+        [
+          {
+            "node": "Combine HOLD and SHORTLIST",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Phase 3 SHORTLIST products": {
+      "main": [
+        [
+          {
+            "node": "Combine HOLD and SHORTLIST",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Combine HOLD and SHORTLIST": {
+      "main": [
+        [
+          {
+            "node": "Wait for eligible and source rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get researched product rows": {
+      "main": [
+        [
+          {
+            "node": "Wait for eligible and source rows",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Wait for eligible and source rows": {
+      "main": [
+        [
+          {
+            "node": "Join eligible products to search queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Join eligible products to search queries": {
+      "main": [
+        [
+          {
+            "node": "Collect 50 real AliExpress results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect 50 real AliExpress results": {
+      "main": [
+        [
+          {
+            "node": "Build comparability payloads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build comparability payloads": {
+      "main": [
+        [
+          {
+            "node": "AI - Classify direct competitors only",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configure Phase 4 Qwen model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI - Classify direct competitors only",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI - Classify direct competitors only": {
+      "main": [
+        [
+          {
+            "node": "Calculate measured competition",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate measured competition": {
+      "main": [
+        [
+          {
+            "node": "Expand competition to grouped products",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Record Phase 4 actual-or-estimated usage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expand competition to grouped products": {
+      "main": [
+        [
+          {
+            "node": "Write measured competition to review sheet",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Review measured competition",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write measured competition to review sheet": {
+      "main": [
+        [
+          {
+            "node": "Prepare Phase 4 source status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Phase 4 source status": {
+      "main": [
+        [
+          {
+            "node": "Mark source product Phase 4 measured",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Phase 4 actual-or-estimated usage": {
+      "main": [
+        [
+          {
+            "node": "Log Phase 4 usage locally",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "phase4-measured-competition-v1",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

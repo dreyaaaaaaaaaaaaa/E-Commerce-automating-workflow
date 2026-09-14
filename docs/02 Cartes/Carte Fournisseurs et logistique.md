@@ -4,10 +4,10 @@ tags: [carte, fournisseurs, logistique]
 
 # Carte : Fournisseurs et logistique
 
-> Le volet dropshipping proprement dit (import produit, routage des commandes)
-> vit dans un **autre dépôt**, pas encore fusionné. Ne pas supposer qu'un flux
-> d'approvisionnement existe ici : `ops/` écrit un catalogue, il ne parle à
-> aucun fournisseur.
+> La recherche produit est documentée dans [[Carte Sourcing]] (`sourcing/`,
+> collecteurs en dépôt privé). Le routage des commandes n'existe encore nulle
+> part. Ne pas supposer qu'un flux d'approvisionnement existe ici : `ops/`
+> écrit un catalogue, il ne parle à aucun fournisseur.
 
 ## Fournisseurs
 
@@ -27,7 +27,6 @@ SORT statut ASC
 
 ## Questions ouvertes
 
-- [ ] Où est l'autre dépôt (automatisation fournisseur) et quel est son état ?
 - [ ] Comment un produit fournisseur devient-il un JSON conforme aux règles DA (titre 48 car., photo 4:5, prix multiple de 50) ? Étape de transformation à définir.
 - [ ] Délais annoncés sur la fiche produit et dans les CGV : à décider avec les vrais fournisseurs.
 - [ ] Politique de retour en dropshipping (qui reçoit le colis retourné ?)

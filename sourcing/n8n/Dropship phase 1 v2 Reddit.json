@@ -1,0 +1,344 @@
+{
+  "name": "Dropship phase 1 v2 - Reddit Discovery",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-manual",
+      "name": "Manual test trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-1080, 80]
+    },
+    {
+      "parameters": {"inputSource": "passthrough"},
+      "id": "trigger-subworkflow-phase1",
+      "name": "Run Phase 1 from orchestrator",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [-1080, 180]
+    },
+    {
+      "parameters": {
+        "url": "={{ ($vars.DISCOVERY_API_BASE || 'http://host.docker.internal:8789') + '/health' }}",
+        "options": {"timeout": 10000}
+      },
+      "id": "health-discovery",
+      "name": "Check discovery API health",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [-970, 80]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($vars.DISCOVERY_API_BASE || 'http://host.docker.internal:8789') + '/collect' }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({test_mode:false,safe_run:true,community_limit:15,community_offset:((Number($execution.id)||0)%5)*15,headless:false,browser_channel:'chrome',wait_seconds:5,scroll_attempts:6}) }}",
+        "options": {
+          "timeout": 1200000
+        }
+      },
+      "id": "collect-reddit",
+      "name": "Collect Reddit - rotating 15 communities",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [-860, 80]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($vars.DISCOVERY_API_BASE || 'http://host.docker.internal:8789') + '/rescore' }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={\"limit\":10000}",
+        "options": {}
+      },
+      "id": "rescore-existing",
+      "name": "Rescore existing Reddit items",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [-640, 80]
+    },
+    {
+      "parameters": {
+        "url": "={{ ($vars.DISCOVERY_API_BASE || 'http://host.docker.internal:8789') + '/items?status=READY_FOR_AI&limit=150&compact=true' }}",
+        "options": {}
+      },
+      "id": "get-ready-items",
+      "name": "Get 150 newest READY_FOR_AI items",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [-420, 80]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.first().json.data || [];\nconst batchSize = 5;\nconst output = [];\nfor (let i = 0; i < rows.length; i += batchSize) {\n  output.push({ json: { candidates: rows.slice(i, i + batchSize), prompt_version: 'opportunity-gate-v4' } });\n}\nreturn output;"
+      },
+      "id": "build-batches",
+      "name": "Build AI batches of 5",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-200, 80]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ JSON.stringify($json.candidates) }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "ROLE: Extremely conservative product-gap gate for a dropshipping discovery pipeline. Evaluate every Reddit item independently. ACCEPT is rare. ACCEPT only if the supplied text proves: (1) a concrete repeated consumer pain; (2) a product or workaround was tried and materially failed, OR at least two explicit constraints conflict in a way ordinary products do not satisfy; (3) the gap can be addressed by a distinct non-regulated physical product or accessory; and (4) the post contains evidence beyond asking for a recommendation, setup advice, or where to buy something. REJECT when the obvious answer is an already-standard product, accessory, appliance, chemical, mat, screen, pump, light, organizer, detergent, vacuum, or other familiar category and the post does not prove why ordinary versions fail. A desired feature, price preference, regional unavailability, inconvenience, or product search alone is COMMODITY_RECOMMENDATION. Examples to REJECT: needing a condensate pump because a dehumidifier must be emptied; asking for a battery outdoor light; asking how to reduce gym noise with mats; asking for a pest screen without evidence normal screens failed. Examples that may ACCEPT: several ordinary mops were tried and hair remains trapped; common fridge organizers were tried but fail an explicit depth plus bottle-width constraint. Do not invent failures, constraints, demand, shipping, margins, demographics, or product performance. Size alone is not a rejection reason. When evidence is incomplete use UNCERTAIN. Output must be concise. For reject or uncertain, accept_data MUST be null and reasoning is maximum 18 words. For accept, accept_data contains the evidence needed by the next phase. Return one JSON object only, every source_id exactly once, same order, no markdown: {\"prompt_version\":\"opportunity-gate-v4\",\"results\":[{\"source_id\":\"string\",\"decision\":\"accept|reject|uncertain\",\"reason_code\":\"VALID_OPPORTUNITY|COMMODITY_RECOMMENDATION|NO_PROBLEM|NO_PHYSICAL_PRODUCT|MEDICAL_OR_SAFETY|SERVICE_OR_SOFTWARE|PROFESSIONAL|WEAK_EVIDENCE\",\"evidence_excerpt\":\"maximum 10 copied words or null\",\"reasoning\":\"maximum 18 words\",\"confidence\":0,\"accept_data\":null}]}. For accept only, replace accept_data with {\"problem_statement\":\"concise evidenced problem\",\"product_concept\":\"concise generic sellable concept\",\"affected_user\":\"evidence-supported user\",\"desired_outcome\":\"concise outcome\",\"solution_status\":\"failed|conflicting_constraints\",\"failed_solution_evidence\":\"copied or tightly paraphrased evidence, or null\",\"unmet_constraints\":[\"maximum 3 explicit constraints\"],\"why_not_commodity\":\"maximum 18 words grounded in supplied evidence\",\"search_query\":\"one literal 2-6 word generic supplier query\"}. Confidence is an integer 50-100 measuring confidence in the decision."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "analyze-opportunities",
+      "name": "AI - Analyze Reddit opportunities",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 10000,
+      "position": [20, 80]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "qwen3.8-flash",
+          "mode": "list",
+          "cachedResultName": "qwen3.8-flash"
+        },
+        "responsesApiEnabled": false,
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "chat-model",
+      "name": "Configure AI credential",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [20, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const responses = $input.all();\nconst batches = $('Build AI batches of 5').all();\nif (responses.length !== batches.length) throw new Error(`Expected ${batches.length} AI responses, got ${responses.length}`);\nreturn responses.flatMap((item, index) => {\n  const candidates = batches[index]?.json?.candidates || [];\n  const raw = String(item.json.text || '').replace(/```json/gi, '').replace(/```/g, '').trim();\n  let parsed = {}; let parsedResults = []; let formatError = null;\n  try {\n    parsed = JSON.parse(raw);\n    parsedResults = Array.isArray(parsed) ? parsed : parsed.results;\n    if (!Array.isArray(parsedResults)) throw new Error('AI response must contain a results array');\n  } catch (error) { formatError = error.message; }\n  const candidateIds = candidates.map(row => String(row.source_id));\n  const allowed = new Set(candidateIds); const byResult = new Map();\n  if (!formatError) {\n    for (const result of parsedResults) {\n      const id = String(result?.source_id || '');\n      if (!allowed.has(id)) { formatError = 'Unknown source_id: ' + id; break; }\n      if (byResult.has(id)) { formatError = 'Duplicate source_id: ' + id; break; }\n      byResult.set(id, result);\n    }\n    if (!formatError && (byResult.size !== candidateIds.length || candidateIds.some(id => !byResult.has(id)))) formatError = 'AI response must cover every source_id exactly once';\n  }\n  return candidates.map(source => {\n    const result = formatError ? {} : (byResult.get(String(source.source_id)) || {});\n    let decision = String(result.decision || 'uncertain').toLowerCase();\n    if (!['accept','reject','uncertain'].includes(decision)) decision = 'uncertain';\n    const reasonCode = String(result.reason_code || '').toUpperCase();\n    const confidence = Number(result.confidence);\n    const data = result.accept_data && typeof result.accept_data === 'object' ? result.accept_data : {};\n    const query = String(data.search_query || '').trim().replace(/\\s+/g,' ');\n    const queryWords = query ? query.split(' ').length : 0;\n    const concept = String(data.product_concept || '').trim();\n    const constraints = Array.isArray(data.unmet_constraints) ? data.unmet_constraints.map(value => String(value || '').trim()).filter(Boolean).slice(0,3) : [];\n    const solutionStatus = String(data.solution_status || '');\n    const failedEvidence = String(data.failed_solution_evidence || '').trim();\n    const validGapEvidence = solutionStatus === 'failed' ? Boolean(failedEvidence) : solutionStatus === 'conflicting_constraints' ? constraints.length >= 2 : false;\n    const acceptIsValid = reasonCode === 'VALID_OPPORTUNITY' && Number.isInteger(confidence) && confidence >= 70 && confidence <= 100 && validGapEvidence && String(result.evidence_excerpt || '').trim() && String(data.problem_statement || '').trim() && String(data.why_not_commodity || '').trim() && concept.length >= 3 && concept.length <= 100 && queryWords >= 2 && queryWords <= 8;\n    let guardrailReason = null;\n    if (decision === 'accept' && !acceptIsValid) { decision = 'uncertain'; guardrailReason = 'ACCEPT_GUARDRAIL_FAILED'; }\n    const accepted = decision === 'accept';\n    return { json: { source_id: source.source_id, decision, reason_code: formatError ? 'AI_FORMAT_ERROR' : (guardrailReason || reasonCode || 'WEAK_EVIDENCE'), rejection_reason: formatError ? 'AI_FORMAT_ERROR: ' + formatError : (guardrailReason || result.reasoning || null), problem_statement: accepted ? String(data.problem_statement).trim() : null, product_concept: accepted ? concept : null, affected_user: accepted ? String(data.affected_user || '').trim() : null, desired_outcome: accepted ? String(data.desired_outcome || '').trim() : null, evidence_excerpt: String(result.evidence_excerpt || '').trim() || null, unmet_constraint: accepted ? constraints.join('; ') : null, failed_existing_solution: accepted ? (failedEvidence || null) : null, why_not_commodity: accepted ? String(data.why_not_commodity).trim() : null, search_query: accepted ? query.toLowerCase() : null, confidence: Number.isFinite(confidence) ? confidence : 0, prompt_version: 'opportunity-gate-v4', source_url: source.url, source_title: source.title, pre_score: source.pre_score, category: source.category, batch_id: index + 1, format_error: formatError } };\n  });\n});"
+      },
+      "id": "parse-ai-results",
+      "name": "Validate AI JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [260, 20]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "accepted-condition",
+              "leftValue": "={{ $json.decision }}",
+              "rightValue": "accept",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-accepted",
+      "name": "Accepted opportunity?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [480, 20]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  const data = item.json;\n  const query = String(data.search_query || '').trim().toLowerCase();\n  const productName = String(data.product_concept || '').trim();\n  if (!query || !productName) throw new Error('Accepted opportunity lacks product_concept or search_query: ' + data.source_id);\n  return { json: { ...data, opportunity_id: 'reddit:' + data.source_id, search_query: query, product_name: productName, status: 'PHASE1_QUALIFIED' } };\n});"
+      },
+      "id": "prepare-sheet-rows",
+      "name": "Prepare supplier search rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, -80]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/VOTRE_ID_GOOGLE_SHEET/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 227160725,
+          "mode": "list",
+          "cachedResultName": "Possible items"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "product_name": "={{ $json.product_name }}",
+            "search_query": "={{ $json.search_query }}",
+            "trend_context": "={{ $json.evidence_excerpt }}",
+            "problem_solved": "={{ $json.problem_statement }}",
+            "target_customer": "={{ $json.affected_user }}",
+            "why_relevant": "={{ $json.desired_outcome }}",
+            "status": "PHASE1_QUALIFIED",
+            "source_id": "={{ $json.source_id }}",
+            "source_url": "={{ $json.source_url }}",
+            "opportunity_id": "={{ $json.opportunity_id }}"
+          },
+          "matchingColumns": [
+            "opportunity_id",
+            "search_query"
+          ],
+          "schema": [
+            {"id": "product_name", "displayName": "product_name", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "search_query", "displayName": "search_query", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "trend_context", "displayName": "trend_context", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "problem_solved", "displayName": "problem_solved", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "target_customer", "displayName": "target_customer", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "why_relevant", "displayName": "why_relevant", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "status", "displayName": "status", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "source_id", "displayName": "source_id", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "source_url", "displayName": "source_url", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "opportunity_id", "displayName": "opportunity_id", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true}
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "append-opportunities",
+      "name": "Append accepted opportunity",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [920, -80]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows=$('Prepare supplier search rows').all();\nconst seen=new Set();\nreturn rows.flatMap(item=>{ const sourceId=String(item.json.source_id || ''); if(!sourceId || seen.has(sourceId)) return []; seen.add(sourceId); return [{json:{source_id:sourceId}}]; });"
+      },
+      "id": "confirm-accepted-sources",
+      "name": "Recover accepted source IDs after Sheets",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1130, -80]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($vars.DISCOVERY_API_BASE || 'http://host.docker.internal:8789') + '/items/status' }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ source_ids: [$json.source_id], status: 'AI_ACCEPTED', expected_status: 'READY_FOR_AI' }) }}",
+        "options": {}
+      },
+      "id": "mark-accepted",
+      "name": "Mark Reddit item AI_ACCEPTED",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [1350, -80]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($vars.DISCOVERY_API_BASE || 'http://host.docker.internal:8789') + '/items/status' }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ source_ids: [$json.source_id], status: $json.decision === 'reject' ? 'AI_REJECTED' : 'AI_UNCERTAIN', expected_status: 'READY_FOR_AI' }) }}",
+        "options": {}
+      },
+      "id": "mark-not-accepted",
+      "name": "Mark rejected or uncertain",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [700, 140]
+    },
+    {
+      "parameters": {
+        "jsCode": "const responses = $input.all();\nconst batches = $('Build AI batches of 5').all();\nreturn responses.map((item, index) => {\n  const candidates = batches[index]?.json?.candidates || [];\n  const metadata = item.json.response_metadata || item.json.usage_metadata || item.json.usage || {};\n  const usage = metadata.tokenUsage || metadata.usage || metadata;\n  const input = Number(usage.input_tokens ?? usage.prompt_tokens ?? usage.promptTokens);\n  const output = Number(usage.output_tokens ?? usage.completion_tokens ?? usage.completionTokens);\n  const providerTotal = Number(usage.total_tokens ?? usage.totalTokens);\n  const actual = Number.isFinite(providerTotal) || (Number.isFinite(input) && Number.isFinite(output));\n  const estimatedInput = Math.ceil((4300 + JSON.stringify(candidates).length) / 4);\n  const estimatedOutput = Math.ceil(String(item.json.text || '').length / 4);\n  const actualInput = Number.isFinite(input) ? input : 0;\n  const actualOutput = Number.isFinite(output) ? output : 0;\n  const total = actual ? (Number.isFinite(providerTotal) ? Math.max(providerTotal, actualInput + actualOutput) : actualInput + actualOutput) : estimatedInput + estimatedOutput;\n  return { json: { run_id: $execution.id + '-batch-' + (index + 1), timestamp: new Date().toISOString(), workflow: 'reddit_opportunity_analysis', prompt_version: 'opportunity-gate-v4', model: actual ? String(usage.model || 'provider-reported-model') : 'configured-in-n8n', status: 'SUCCESS', input_tokens: actual ? actualInput : estimatedInput, output_tokens: actual ? actualOutput : estimatedOutput, total_tokens: total, token_source: actual ? 'actual' : 'estimated', estimated_cost_usd: null, candidates_in_call: candidates.length, batch_id: index + 1 } };\n});"
+      },
+      "id": "estimate-usage",
+      "name": "Estimate AI token usage",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [260, 220]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($vars.DISCOVERY_API_BASE || 'http://host.docker.internal:8789') + '/ai-usage' }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "log-usage",
+      "name": "Log AI usage locally",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [480, 220]
+    },
+    {
+      "parameters": {
+        "content": "## Phase 1 - high-volume rotating Reddit discovery\n1. Start `python -m problem_discovery serve --port 8789`.\n2. Select the existing AI credential in **Configure AI credential**.\n3. Select the existing Google Sheets credential in **Append accepted opportunity**.\n4. Each execution rotates through 15 of the 63 configured subreddits and targets up to 10 unseen posts per subreddit.\n5. The full list is covered across 5 executions, including aesthetic spaces, desk setups, cable management and visual organization communities.\n6. The 150 newest READY_FOR_AI posts are evaluated in strict batches of 5 (30 AI calls maximum).\n7. Prompt `opportunity-gate-v4` remains intentionally strict; collection volume increases, acceptance quality does not decrease.\n8. New qualified rows use `PHASE1_QUALIFIED`; older statuses never enter Phase 2.\n9. Chrome is visible during collection.",
+        "height": 260,
+        "width": 420,
+        "color": 5
+      },
+      "id": "setup-note",
+      "name": "Setup instructions",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-1080, -300]
+    }
+  ],
+  "connections": {
+    "Manual test trigger": {"main": [[{"node": "Check discovery API health", "type": "main", "index": 0}]]},
+    "Run Phase 1 from orchestrator": {"main": [[{"node": "Check discovery API health", "type": "main", "index": 0}]]},
+    "Check discovery API health": {"main": [[{"node": "Collect Reddit - rotating 15 communities", "type": "main", "index": 0}]]},
+    "Collect Reddit - rotating 15 communities": {"main": [[{"node": "Rescore existing Reddit items", "type": "main", "index": 0}]]},
+    "Rescore existing Reddit items": {"main": [[{"node": "Get 150 newest READY_FOR_AI items", "type": "main", "index": 0}]]},
+    "Get 150 newest READY_FOR_AI items": {"main": [[{"node": "Build AI batches of 5", "type": "main", "index": 0}]]},
+    "Build AI batches of 5": {"main": [[{"node": "AI - Analyze Reddit opportunities", "type": "main", "index": 0}]]},
+    "Configure AI credential": {"ai_languageModel": [[{"node": "AI - Analyze Reddit opportunities", "type": "ai_languageModel", "index": 0}]]},
+    "AI - Analyze Reddit opportunities": {"main": [[{"node": "Validate AI JSON", "type": "main", "index": 0}, {"node": "Estimate AI token usage", "type": "main", "index": 0}]]},
+    "Validate AI JSON": {"main": [[{"node": "Accepted opportunity?", "type": "main", "index": 0}]]},
+    "Accepted opportunity?": {"main": [[{"node": "Prepare supplier search rows", "type": "main", "index": 0}], [{"node": "Mark rejected or uncertain", "type": "main", "index": 0}]]},
+    "Prepare supplier search rows": {"main": [[{"node": "Append accepted opportunity", "type": "main", "index": 0}]]},
+    "Append accepted opportunity": {"main": [[{"node": "Recover accepted source IDs after Sheets", "type": "main", "index": 0}]]},
+    "Recover accepted source IDs after Sheets": {"main": [[{"node": "Mark Reddit item AI_ACCEPTED", "type": "main", "index": 0}]]},
+    "Estimate AI token usage": {"main": [[{"node": "Log AI usage locally", "type": "main", "index": 0}]]}
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "phase1-v2-reddit-only",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

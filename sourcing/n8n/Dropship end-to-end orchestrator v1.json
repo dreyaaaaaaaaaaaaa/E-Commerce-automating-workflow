@@ -1,0 +1,144 @@
+{
+  "name": "Dropship END TO END v1 - Phases 1 to 5",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Start complete test",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-760, 80]
+    },
+    {
+      "parameters": {
+        "url": "={{ ($vars.DISCOVERY_API_BASE || 'http://host.docker.internal:8789') + '/health' }}",
+        "options": {"timeout": 10000}
+      },
+      "id": "check-discovery",
+      "name": "Check Reddit API 8789",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [-560, 80]
+    },
+    {
+      "parameters": {
+        "url": "={{ ($vars.ALIEXPRESS_API_BASE || 'http://host.docker.internal:8787') + '/health' }}",
+        "options": {"timeout": 10000}
+      },
+      "id": "check-aliexpress",
+      "name": "Check AliExpress API 8787",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [-350, 80]
+    },
+    {
+      "parameters": {
+        "workflowId": {"__rl": true, "value": "", "mode": "list", "cachedResultName": "Dropship phase 1 v2 - Reddit Discovery"},
+        "workflowInputs": {"mappingMode": "defineBelow", "value": {}, "matchingColumns": [], "schema": [], "attemptToConvertTypes": false, "convertFieldsToString": true},
+        "mode": "all",
+        "options": {"waitForSubWorkflow": true}
+      },
+      "id": "execute-phase1",
+      "name": "PHASE 1 - Reddit discovery",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [-120, 80],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "workflowId": {"__rl": true, "value": "", "mode": "list", "cachedResultName": "Dropship phase 2 v2 - AliExpress Supplier Research"},
+        "workflowInputs": {"mappingMode": "defineBelow", "value": {}, "matchingColumns": [], "schema": [], "attemptToConvertTypes": false, "convertFieldsToString": true},
+        "mode": "all",
+        "options": {"waitForSubWorkflow": true}
+      },
+      "id": "execute-phase2",
+      "name": "PHASE 2 - Supplier research",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [110, 80],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "workflowId": {"__rl": true, "value": "", "mode": "list", "cachedResultName": "Dropship phase 3 v2 - Evidence Based Product Evaluation"},
+        "workflowInputs": {"mappingMode": "defineBelow", "value": {}, "matchingColumns": [], "schema": [], "attemptToConvertTypes": false, "convertFieldsToString": true},
+        "mode": "all",
+        "options": {"waitForSubWorkflow": true}
+      },
+      "id": "execute-phase3",
+      "name": "PHASE 3 - Product evaluation",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [340, 80],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "workflowId": {"__rl": true, "value": "", "mode": "list", "cachedResultName": "Dropship phase 4 v2 - Measured AliExpress Competition"},
+        "workflowInputs": {"mappingMode": "defineBelow", "value": {}, "matchingColumns": [], "schema": [], "attemptToConvertTypes": false, "convertFieldsToString": true},
+        "mode": "all",
+        "options": {"waitForSubWorkflow": true}
+      },
+      "id": "execute-phase4",
+      "name": "PHASE 4 - Competition",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [570, 80],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "workflowId": {"__rl": true, "value": "", "mode": "list", "cachedResultName": "Dropship phase 5 v1 - Product Validation and Economics"},
+        "workflowInputs": {"mappingMode": "defineBelow", "value": {}, "matchingColumns": [], "schema": [], "attemptToConvertTypes": false, "convertFieldsToString": true},
+        "mode": "all",
+        "options": {"waitForSubWorkflow": true}
+      },
+      "id": "execute-phase5",
+      "name": "PHASE 5 - Economics",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [800, 80],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{json:{status:'END_TO_END_COMPLETE',completed_at:new Date().toISOString(),message:'All five workflows completed. Review Possible items, Found items online, ai selected products, and Phase 5 validation.'}}];"
+      },
+      "id": "complete",
+      "name": "Complete end-to-end run",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1030, 80]
+    },
+    {
+      "parameters": {
+        "content": "## First end-to-end test\n1. Import the updated Phase 1–5 JSON files first.\n2. In every PHASE node below, select the matching workflow from the list.\n3. Keep ports 8787 and 8789 open.\n4. Verify the existing Google Sheets and AI credentials in the phase workflows.\n5. Execute this workflow manually. Each phase waits for the previous one and any error stops the chain.\n\nThe phase workflows remain independently runnable with their manual triggers.",
+        "height": 300,
+        "width": 520,
+        "color": 5
+      },
+      "id": "instructions",
+      "name": "End-to-end instructions",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-760, -320]
+    }
+  ],
+  "connections": {
+    "Start complete test": {"main": [[{"node": "Check Reddit API 8789", "type": "main", "index": 0}]]},
+    "Check Reddit API 8789": {"main": [[{"node": "Check AliExpress API 8787", "type": "main", "index": 0}]]},
+    "Check AliExpress API 8787": {"main": [[{"node": "PHASE 1 - Reddit discovery", "type": "main", "index": 0}]]},
+    "PHASE 1 - Reddit discovery": {"main": [[{"node": "PHASE 2 - Supplier research", "type": "main", "index": 0}]]},
+    "PHASE 2 - Supplier research": {"main": [[{"node": "PHASE 3 - Product evaluation", "type": "main", "index": 0}]]},
+    "PHASE 3 - Product evaluation": {"main": [[{"node": "PHASE 4 - Competition", "type": "main", "index": 0}]]},
+    "PHASE 4 - Competition": {"main": [[{"node": "PHASE 5 - Economics", "type": "main", "index": 0}]]},
+    "PHASE 5 - Economics": {"main": [[{"node": "Complete end-to-end run", "type": "main", "index": 0}]]}
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {"executionOrder": "v1", "binaryMode": "separate", "availableInMCP": false},
+  "versionId": "dropship-end-to-end-v1",
+  "meta": {"templateCredsSetupCompleted": false},
+  "tags": []
+}

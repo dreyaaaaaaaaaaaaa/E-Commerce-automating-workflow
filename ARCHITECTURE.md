@@ -125,10 +125,21 @@ maison/
 │       ├── images/            visuels sources
 │       └── manifeste-images.json
 ├── tools/verifier-theme.mjs   cohérence du thème (parité FR/EN, snippets…)
-└── .github/workflows/
-    ├── theme.yml              theme check, aperçu de PR, déploiement
-    ├── catalogue-verifier.yml conformité + diff sur PR
-    └── catalogue-lot.yml      lancement manuel du lot, par étape
+├── .github/workflows/
+│   ├── theme.yml              theme check, aperçu de PR, déploiement
+│   ├── catalogue-verifier.yml conformité + diff sur PR
+│   └── catalogue-lot.yml      lancement manuel du lot, par étape
+├── sourcing/                  recherche produit (n8n orchestre, ne scrape pas)
+│   ├── README.md              les cinq phases, ce qui est public et privé
+│   ├── n8n/                   6 exports de workflows (phases 1 à 5 + orchestrateur)
+│   ├── prompts/n8n/           4 prompts (extraction, clustering, évaluation, comparabilité)
+│   ├── docs/                  audits, plan d'implémentation, runbook, scripts de non-régression
+│   └── config/                variables n8n, catégories Reddit
+│                              (les collecteurs Python sont dans un dépôt privé)
+└── docs/                      coffre Obsidian : journal, décisions, suivi produit
+    ├── Accueil.md             tableau de bord
+    ├── 01 Journal/  02 Cartes/  03 Decisions/  04 Produits/  05 Univers/ ...
+    └── _pieces-jointes/captures/   rendus des six maquettes (README)
 ```
 
 ---

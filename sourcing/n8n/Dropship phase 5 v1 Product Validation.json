@@ -1,0 +1,201 @@
+{
+  "name": "Dropship phase 5 v1 - Product Validation and Economics",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger",
+      "name": "Manual Phase 5 trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-1180, 80]
+    },
+    {
+      "parameters": {"inputSource": "passthrough"},
+      "id": "trigger-subworkflow-phase5",
+      "name": "Run Phase 5 from orchestrator",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [-1180, 180]
+    },
+    {
+      "parameters": {
+        "url": "={{ ($vars.ALIEXPRESS_API_BASE || 'http://host.docker.internal:8787') + '/health' }}",
+        "options": {"timeout": 10000}
+      },
+      "id": "health-aliexpress",
+      "name": "Check AliExpress API health",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [-1040, 80]
+    },
+    {
+      "parameters": {
+        "documentId": {"__rl": true, "value": "https://docs.google.com/spreadsheets/d/VOTRE_ID_GOOGLE_SHEET/edit", "mode": "url"},
+        "sheetName": {"__rl": true, "value": 1639288877, "mode": "list", "cachedResultName": "ai selected products"},
+        "filtersUI": {"values": [{"lookupColumn": "status", "lookupValue": "PHASE4_COMPETITION_MEASURED"}]},
+        "options": {}
+      },
+      "id": "phase4-products",
+      "name": "Get Phase 4 measured products",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [-860, -40]
+    },
+    {
+      "parameters": {
+        "jsCode": "const allowedRecommendations=new Set(['HOLD','SHORTLIST']);\nconst allowedCompetition=new Set(['LOW','MEDIUM','HIGH']);\nconst seen=new Set(); const output=[];\nfor(const item of $input.all()){ const row=item.json; const recommendation=String(row.recommendation || '').toUpperCase(); const competition=String(row.competition_level || '').toUpperCase(); const productId=String(row.product_id || String(row.product_name || '').match(/\\[(\\d{10,})\\]/)?.[1] || ''); const destination=String(row.destination_country || 'FR').toUpperCase(); const opportunityId=String(row.opportunity_id || ''); const evaluationKey=String(row.evaluation_key || (opportunityId+'|'+productId+'|'+destination)); if(!allowedRecommendations.has(recommendation) || !allowedCompetition.has(competition) || !productId || !evaluationKey || seen.has(evaluationKey)) continue; seen.add(evaluationKey); output.push({json:{_kind:'candidate',evaluation_key:evaluationKey,opportunity_id:opportunityId,product_id:productId,product_name:String(row.product_name || ''),phase3_recommendation:recommendation,phase3_score:row.final_score ?? null,competition_level:competition,competition_evidence:String(row.competition_evidence || ''),destination_country:destination}}); }\nreturn output.slice(0,20);"
+      },
+      "id": "select-candidates",
+      "name": "Select bounded Phase 5 candidates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-650, -40]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($vars.ALIEXPRESS_API_BASE || 'http://host.docker.internal:8787') + '/reparse' }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ product: $json.product_id, country: $json.destination_country || 'FR' }) }}",
+        "options": {"timeout": 30000}
+      },
+      "id": "get-product",
+      "name": "Reparse saved market evidence",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [-430, -40]
+    },
+    {
+      "parameters": {
+        "jsCode": "const sources=$('Select bounded Phase 5 candidates').all();\nconst numeric=value=>{ if(value===null || value===undefined || String(value).trim()==='') return null; const parsed=Number(value); return Number.isFinite(parsed)?parsed:null; };\nreturn $input.all().map((item,index)=>{ const source=sources[index]?.json || {}; const product=item.json?.snapshot || item.json || {}; const rawPrice=product.eligible_min_price ?? product.min_price; const price=numeric(rawPrice); const currency=String(product.currency || 'EUR').toUpperCase(); const shippingCurrency=String(product.shipping_currency || '').toUpperCase(); const shipping=numeric(product.shipping_cost); return {json:{...source,_kind:'candidate',product_name:String(product.title || source.product_name || ''),product_link:String(product.canonical_url || product.requested_url || ('https://www.aliexpress.com/item/'+source.product_id+'.html')),currency,supplier_item_cost_eur:currency==='EUR' && price!==null?price:null,captured_shipping_cost_eur:(shipping===0 || shippingCurrency==='EUR')?shipping:null,captured_delivery_days:numeric(product.delivery_day_max),shipping_service:product.shipping_service || null,shipping_quote_count:numeric(product.shipping_quote_count) || 0,source_snapshot_status:product.last_status || product.status || null,source_fetched_at:product.last_fetched_at || product.fetched_at || null}}; });"
+      },
+      "id": "normalize-product",
+      "name": "Normalize current supplier evidence",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-210, -40]
+    },
+    {
+      "parameters": {
+        "documentId": {"__rl": true, "value": "https://docs.google.com/spreadsheets/d/VOTRE_ID_GOOGLE_SHEET/edit", "mode": "url"},
+        "sheetName": {"__rl": true, "value": 197049196, "mode": "list", "cachedResultName": "Phase 5 validation"},
+        "options": {}
+      },
+      "id": "existing-validation",
+      "name": "Get existing Phase 5 validation rows",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [-650, 220],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows=$input.all().filter(item=>item.json.evaluation_key).map(item=>({json:{...item.json,_kind:'existing'}})); return rows.length?rows:[{json:{_kind:'existing_empty'}}];"
+      },
+      "id": "tag-existing",
+      "name": "Tag existing manual validation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-430, 220]
+    },
+    {
+      "parameters": {"mode": "append"},
+      "id": "merge",
+      "name": "Wait for candidate and manual rows",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [20, 80]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows=$input.all().map(item=>item.json);\nconst candidates=rows.filter(row=>row._kind==='candidate'); const existing=new Map(rows.filter(row=>row._kind==='existing').map(row=>[String(row.evaluation_key),row]));\nconst numeric=value=>{if(value===null||value===undefined||String(value).trim()==='')return null;const n=Number(String(value).replace(',','.'));return Number.isFinite(n)?n:null;}; const vars=typeof $vars==='object'?$vars:{}; const configured=(name,fallback)=>{const n=numeric(vars[name]);return n===null?fallback:n;};\nconst output=[]; for(const candidate of candidates){output.push({json:candidate}); const old={...(existing.get(String(candidate.evaluation_key))||{}),_kind:'existing',evaluation_key:candidate.evaluation_key}; const assumed=[]; const use=(key,value,label)=>{if(numeric(old[key])===null&&value!==null){old[key]=value;assumed.push(label||key);}}; use('shipping_cost_eur',numeric(candidate.captured_shipping_cost_eur),'shipping:capture'); use('delivery_days',numeric(candidate.captured_delivery_days),'delivery:capture'); use('shipping_cost_eur',configured('PHASE5_SHIPPING_COST_EUR',null),'shipping:config'); use('delivery_days',configured('PHASE5_DELIVERY_DAYS',null),'delivery:config'); use('packaging_cost_eur',configured('PHASE5_PACKAGING_COST_EUR',0.5)); use('import_duty_eur',configured('PHASE5_IMPORT_DUTY_EUR',0)); use('vat_rate_pct',configured('PHASE5_VAT_RATE_PCT',20)); use('payment_fee_pct',configured('PHASE5_PAYMENT_FEE_PCT',3)); use('payment_fee_fixed_eur',configured('PHASE5_PAYMENT_FEE_FIXED_EUR',0.3)); use('acquisition_cost_eur',configured('PHASE5_ACQUISITION_COST_EUR',0)); const supplier=numeric(candidate.supplier_item_cost_eur); const reservePct=configured('PHASE5_RETURN_RESERVE_PCT',5); const targetMargin=configured('PHASE5_TARGET_MARGIN_PCT',30); if(numeric(old.sale_price_ttc_eur)===null&&supplier!==null&&numeric(old.shipping_cost_eur)!==null){const base=supplier+numeric(old.shipping_cost_eur)+numeric(old.packaging_cost_eur)+numeric(old.import_duty_eur)+numeric(old.payment_fee_fixed_eur);const denominator=(1-targetMargin/100)/(1+numeric(old.vat_rate_pct)/100)-numeric(old.payment_fee_pct)/100-reservePct/100;if(denominator>0){old.sale_price_ttc_eur=Math.ceil(base/denominator+0.01)-0.01;assumed.push('sale_price:target_margin');}} if(numeric(old.return_reserve_eur)===null&&numeric(old.sale_price_ttc_eur)!==null){old.return_reserve_eur=Number((numeric(old.sale_price_ttc_eur)*reservePct/100).toFixed(2));assumed.push('return_reserve:percent');} const trace='AUTO_SCENARIO target_margin='+targetMargin+'%; return_reserve='+reservePct+'%; '+assumed.join('|')+'; shipping_service='+(candidate.shipping_service||'n/a')+'; quotes='+(candidate.shipping_quote_count||0); const previous=String(old.validation_notes||'').split(' || AUTO_SCENARIO')[0]; old.validation_notes=[previous,trace].filter(Boolean).join(' || '); output.push({json:old}); } return output;"
+      },
+      "id": "automatic-inputs",
+      "name": "Apply automated Phase 5 inputs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 80]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows=$input.all().map(item=>item.json);\nconst candidates=rows.filter(row=>row._kind==='candidate'); const existing=new Map(rows.filter(row=>row._kind==='existing').map(row=>[String(row.evaluation_key),row]));\nconst numeric=value=>{ if(value===null || value===undefined || String(value).trim()==='') return null; const parsed=Number(String(value).replace(',','.')); return Number.isFinite(parsed)?parsed:null; };\nconst text=(value,fallback='')=>String(value ?? fallback).trim(); const confirmed=value=>['YES','NOT_APPLICABLE'].includes(text(value).toUpperCase());\nreturn candidates.map(candidate=>{ const old=existing.get(String(candidate.evaluation_key)) || {}; const manual={sale_price_ttc_eur:numeric(old.sale_price_ttc_eur),shipping_cost_eur:numeric(old.shipping_cost_eur),packaging_cost_eur:numeric(old.packaging_cost_eur),import_duty_eur:numeric(old.import_duty_eur),vat_rate_pct:numeric(old.vat_rate_pct),payment_fee_pct:numeric(old.payment_fee_pct),payment_fee_fixed_eur:numeric(old.payment_fee_fixed_eur),return_reserve_eur:numeric(old.return_reserve_eur),acquisition_cost_eur:numeric(old.acquisition_cost_eur),delivery_days:numeric(old.delivery_days),exact_variant_confirmed:text(old.exact_variant_confirmed,'PENDING').toUpperCase(),shipping_quote_confirmed:text(old.shipping_quote_confirmed,'PENDING').toUpperCase(),dimensions_confirmed:text(old.dimensions_confirmed,'PENDING').toUpperCase(),material_confirmed:text(old.material_confirmed,'PENDING').toUpperCase(),compliance_checked:text(old.compliance_checked,'PENDING').toUpperCase(),sample_status:text(old.sample_status,'NOT_ORDERED').toUpperCase(),validation_notes:text(old.validation_notes)}; const supplier=numeric(candidate.supplier_item_cost_eur); const requiredFinancial=['sale_price_ttc_eur','shipping_cost_eur','packaging_cost_eur','import_duty_eur','vat_rate_pct','payment_fee_pct','payment_fee_fixed_eur','return_reserve_eur']; const missing=requiredFinancial.filter(key=>manual[key]===null); if(supplier===null) missing.unshift('supplier_item_cost_eur'); if(manual.delivery_days===null) missing.push('delivery_days'); if(manual.exact_variant_confirmed!=='YES') missing.push('exact_variant_confirmed'); if(manual.shipping_quote_confirmed!=='YES') missing.push('shipping_quote_confirmed'); for(const key of ['dimensions_confirmed','material_confirmed','compliance_checked']) if(!confirmed(manual[key])) missing.push(key); const explicitReject=[manual.exact_variant_confirmed,manual.shipping_quote_confirmed,manual.dimensions_confirmed,manual.material_confirmed,manual.compliance_checked].includes('NO') || manual.sample_status==='RECEIVED_FAIL'; let net=null,payment=null,before=null,after=null,margin=null; if(!requiredFinancial.some(key=>manual[key]===null) && supplier!==null && manual.vat_rate_pct>-100){ net=manual.sale_price_ttc_eur/(1+manual.vat_rate_pct/100); payment=manual.sale_price_ttc_eur*manual.payment_fee_pct/100+manual.payment_fee_fixed_eur; before=net-supplier-manual.shipping_cost_eur-manual.packaging_cost_eur-manual.import_duty_eur-payment-manual.return_reserve_eur; after=manual.acquisition_cost_eur===null?null:before-manual.acquisition_cost_eur; margin=net>0?before/net*100:null; } let status='MISSING_EVIDENCE'; if(explicitReject) status='REJECTED_VALIDATION'; else if(before!==null && before<=0) status='REJECTED_ECONOMICS'; else if(missing.length===0 && before>0){ if(manual.sample_status==='RECEIVED_OK') status='READY_FOR_HUMAN_APPROVAL'; else if(manual.sample_status==='ORDERED') status='SAMPLE_ORDERED'; else status='READY_FOR_SAMPLE'; } return {json:{evaluation_key:candidate.evaluation_key,opportunity_id:candidate.opportunity_id,product_id:candidate.product_id,product_name:candidate.product_name,product_link:candidate.product_link,phase3_recommendation:candidate.phase3_recommendation,phase3_score:numeric(candidate.phase3_score),competition_level:candidate.competition_level,competition_evidence:candidate.competition_evidence,destination_country:candidate.destination_country,currency:candidate.currency,supplier_item_cost_eur:supplier,...manual,net_revenue_ex_vat_eur:net===null?null:Number(net.toFixed(2)),payment_fee_eur:payment===null?null:Number(payment.toFixed(2)),contribution_before_acquisition_eur:before===null?null:Number(before.toFixed(2)),contribution_after_acquisition_eur:after===null?null:Number(after.toFixed(2)),contribution_margin_pct:margin===null?null:Number(margin.toFixed(1)),break_even_cac_eur:before===null?null:Number(Math.max(0,before).toFixed(2)),validation_status:status,missing_fields:[...new Set(missing)].join(', '),validation_notes:manual.validation_notes,recalculated_at:new Date().toISOString()}}; });"
+      },
+      "id": "calculate",
+      "name": "Calculate evidence and economics status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 80]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {"__rl": true, "value": "https://docs.google.com/spreadsheets/d/VOTRE_ID_GOOGLE_SHEET/edit", "mode": "url"},
+        "sheetName": {"__rl": true, "value": 197049196, "mode": "list", "cachedResultName": "Phase 5 validation"},
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "evaluation_key": "={{ $json.evaluation_key }}", "opportunity_id": "={{ $json.opportunity_id }}", "product_id": "={{ $json.product_id }}", "product_name": "={{ $json.product_name }}", "product_link": "={{ $json.product_link }}", "phase3_recommendation": "={{ $json.phase3_recommendation }}", "phase3_score": "={{ $json.phase3_score }}", "competition_level": "={{ $json.competition_level }}", "competition_evidence": "={{ $json.competition_evidence }}", "destination_country": "={{ $json.destination_country }}", "currency": "={{ $json.currency }}", "supplier_item_cost_eur": "={{ $json.supplier_item_cost_eur }}", "sale_price_ttc_eur": "={{ $json.sale_price_ttc_eur }}", "shipping_cost_eur": "={{ $json.shipping_cost_eur }}", "packaging_cost_eur": "={{ $json.packaging_cost_eur }}", "import_duty_eur": "={{ $json.import_duty_eur }}", "vat_rate_pct": "={{ $json.vat_rate_pct }}", "payment_fee_pct": "={{ $json.payment_fee_pct }}", "payment_fee_fixed_eur": "={{ $json.payment_fee_fixed_eur }}", "return_reserve_eur": "={{ $json.return_reserve_eur }}", "acquisition_cost_eur": "={{ $json.acquisition_cost_eur }}", "delivery_days": "={{ $json.delivery_days }}", "exact_variant_confirmed": "={{ $json.exact_variant_confirmed }}", "shipping_quote_confirmed": "={{ $json.shipping_quote_confirmed }}", "dimensions_confirmed": "={{ $json.dimensions_confirmed }}", "material_confirmed": "={{ $json.material_confirmed }}", "compliance_checked": "={{ $json.compliance_checked }}", "sample_status": "={{ $json.sample_status }}", "net_revenue_ex_vat_eur": "={{ $json.net_revenue_ex_vat_eur }}", "payment_fee_eur": "={{ $json.payment_fee_eur }}", "contribution_before_acquisition_eur": "={{ $json.contribution_before_acquisition_eur }}", "contribution_after_acquisition_eur": "={{ $json.contribution_after_acquisition_eur }}", "contribution_margin_pct": "={{ $json.contribution_margin_pct }}", "break_even_cac_eur": "={{ $json.break_even_cac_eur }}", "validation_status": "={{ $json.validation_status }}", "missing_fields": "={{ $json.missing_fields }}", "validation_notes": "={{ $json.validation_notes }}", "recalculated_at": "={{ $json.recalculated_at }}"
+          },
+          "matchingColumns": ["evaluation_key"],
+          "schema": [
+            {"id":"evaluation_key","displayName":"evaluation_key","required":false,"defaultMatch":true,"display":true,"type":"string","canBeUsedToMatch":true},{"id":"opportunity_id","displayName":"opportunity_id","required":false,"defaultMatch":false,"display":true,"type":"string","canBeUsedToMatch":true},{"id":"product_id","displayName":"product_id","required":false,"defaultMatch":false,"display":true,"type":"string","canBeUsedToMatch":true},{"id":"product_name","displayName":"product_name","required":false,"defaultMatch":false,"display":true,"type":"string","canBeUsedToMatch":true},{"id":"product_link","displayName":"product_link","required":false,"defaultMatch":false,"display":true,"type":"string","canBeUsedToMatch":true},{"id":"phase3_recommendation","displayName":"phase3_recommendation","required":false,"defaultMatch":false,"display":true,"type":"string","canBeUsedToMatch":true},{"id":"phase3_score","displayName":"phase3_score","required":false,"defaultMatch":false,"display":true,"type":"number","canBeUsedToMatch":true},{"id":"competition_level","displayName":"competition_level","required":false,"defaultMatch":false,"display":true,"type":"string","canBeUsedToMatch":true},{"id":"competition_evidence","displayName":"competition_evidence","required":false,"defaultMatch":false,"display":true,"type":"string","canBeUsedToMatch":true},{"id":"destination_country","displayName":"destination_country","required":false,"defaultMatch":false,"display":true,"type":"string","canBeUsedToMatch":true},{"id":"currency","displayName":"currency","required":false,"defaultMatch":false,"display":true,"type":"string","canBeUsedToMatch":true},{"id":"supplier_item_cost_eur","displayName":"supplier_item_cost_eur","required":false,"defaultMatch":false,"display":true,"type":"number","canBeUsedToMatch":true},{"id":"sale_price_ttc_eur","displayName":"sale_price_ttc_eur","required":false,"defaultMatch":false,"display":true,"type":"number","canBeUsedToMatch":true},{"id":"shipping_cost_eur","displayName":"shipping_cost_eur","required":false,"defaultMatch":false,"display":true,"type":"number","canBeUsedToMatch":true},{"id":"packaging_cost_eur","displayName":"packaging_cost_eur","required":false,"defaultMatch":false,"display":true,"type":"number","canBeUsedToMatch":true},{"id":"import_duty_eur","displayName":"import_duty_eur","required":false,"defaultMatch":false,"display":true,"type":"number","canBeUsedToMatch":true},{"id":"vat_rate_pct","displayName":"vat_rate_pct","required":false,"defaultMatch":false,"display":true,"type":"number","canBeUsedToMatch":true},{"id":"payment_fee_pct","displayName":"payment_fee_pct","required":false,"defaultMatch":false,"display":true,"type":"number","canBeUsedToMatch":true},{"id":"payment_fee_fixed_eur","displayName":"payment_fee_fixed_eur","required":false,"defaultMatch":false,"display":true,"type":"number","canBeUsedToMatch":true},{"id":"return_reserve_eur","displayName":"return_reserve_eur","required":false,"defaultMatch":false,"display":true,"type":"number","canBeUsedToMatch":true},{"id":"acquisition_cost_eur","displayName":"acquisition_cost_eur","required":false,"defaultMatch":false,"display":true,"type":"number","canBeUsedToMatch":true},{"id":"delivery_days","displayName":"delivery_days","required":false,"defaultMatch":false,"display":true,"type":"number","canBeUsedToMatch":true},{"id":"exact_variant_confirmed","displayName":"exact_variant_confirmed","required":false,"defaultMatch":false,"display":true,"type":"string","canBeUsedToMatch":true},{"id":"shipping_quote_confirmed","displayName":"shipping_quote_confirmed","required":false,"defaultMatch":false,"display":true,"type":"string","canBeUsedToMatch":true},{"id":"dimensions_confirmed","displayName":"dimensions_confirmed","required":false,"defaultMatch":false,"display":true,"type":"string","canBeUsedToMatch":true},{"id":"material_confirmed","displayName":"material_confirmed","required":false,"defaultMatch":false,"display":true,"type":"string","canBeUsedToMatch":true},{"id":"compliance_checked","displayName":"compliance_checked","required":false,"defaultMatch":false,"display":true,"type":"string","canBeUsedToMatch":true},{"id":"sample_status","displayName":"sample_status","required":false,"defaultMatch":false,"display":true,"type":"string","canBeUsedToMatch":true},{"id":"net_revenue_ex_vat_eur","displayName":"net_revenue_ex_vat_eur","required":false,"defaultMatch":false,"display":true,"type":"number","canBeUsedToMatch":true},{"id":"payment_fee_eur","displayName":"payment_fee_eur","required":false,"defaultMatch":false,"display":true,"type":"number","canBeUsedToMatch":true},{"id":"contribution_before_acquisition_eur","displayName":"contribution_before_acquisition_eur","required":false,"defaultMatch":false,"display":true,"type":"number","canBeUsedToMatch":true},{"id":"contribution_after_acquisition_eur","displayName":"contribution_after_acquisition_eur","required":false,"defaultMatch":false,"display":true,"type":"number","canBeUsedToMatch":true},{"id":"contribution_margin_pct","displayName":"contribution_margin_pct","required":false,"defaultMatch":false,"display":true,"type":"number","canBeUsedToMatch":true},{"id":"break_even_cac_eur","displayName":"break_even_cac_eur","required":false,"defaultMatch":false,"display":true,"type":"number","canBeUsedToMatch":true},{"id":"validation_status","displayName":"validation_status","required":false,"defaultMatch":false,"display":true,"type":"string","canBeUsedToMatch":true},{"id":"missing_fields","displayName":"missing_fields","required":false,"defaultMatch":false,"display":true,"type":"string","canBeUsedToMatch":true},{"id":"validation_notes","displayName":"validation_notes","required":false,"defaultMatch":false,"display":true,"type":"string","canBeUsedToMatch":true},{"id":"recalculated_at","displayName":"recalculated_at","required":false,"defaultMatch":false,"display":true,"type":"string","canBeUsedToMatch":true}
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "upsert",
+      "name": "Upsert Phase 5 validation rows",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [680, 80]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $('Calculate evidence and economics status').all().map(item=>({json:{product:item.json.product_name,status:item.json.validation_status,missing_fields:item.json.missing_fields,contribution_before_acquisition_eur:item.json.contribution_before_acquisition_eur,contribution_after_acquisition_eur:item.json.contribution_after_acquisition_eur,break_even_cac_eur:item.json.break_even_cac_eur,product_link:item.json.product_link}}));"
+      },
+      "id": "review",
+      "name": "Review Phase 5 results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 80]
+    },
+    {
+      "parameters": {
+        "content": "## Phase 5 - automated scenario + supplier proof (no AI)\n- Reads only Phase 4 products with measured AliExpress competition.\n- Reparses saved captures locally with the current extractor: no search, Chrome, CAPTCHA, Phase 2, 3 or 4 rerun.\n- Uses captured FR/EUR shipping cost and maximum delivery estimate when available.\n- Automatically builds a target-margin price scenario and fills operating assumptions.\n- Existing Sheet values always override defaults. Configure defaults once with PHASE5_* n8n variables.\n- Every automatic assumption is recorded in validation_notes.\n- Exact variant, product compliance and sample approval remain evidence gates.\n\nBefore running: restart port 8787 after code updates and import this workflow version.",
+        "height": 390,
+        "width": 590,
+        "color": 5
+      },
+      "id": "note",
+      "name": "Phase 5 instructions",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-1180, -450]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Phase 5 trigger": {"main": [[{"node": "Check AliExpress API health", "type": "main", "index": 0}]]},
+    "Run Phase 5 from orchestrator": {"main": [[{"node": "Check AliExpress API health", "type": "main", "index": 0}]]},
+    "Check AliExpress API health": {"main": [[{"node": "Get Phase 4 measured products", "type": "main", "index": 0}, {"node": "Get existing Phase 5 validation rows", "type": "main", "index": 0}]]},
+    "Get Phase 4 measured products": {"main": [[{"node": "Select bounded Phase 5 candidates", "type": "main", "index": 0}]]},
+    "Select bounded Phase 5 candidates": {"main": [[{"node": "Reparse saved market evidence", "type": "main", "index": 0}]]},
+    "Reparse saved market evidence": {"main": [[{"node": "Normalize current supplier evidence", "type": "main", "index": 0}]]},
+    "Normalize current supplier evidence": {"main": [[{"node": "Wait for candidate and manual rows", "type": "main", "index": 0}]]},
+    "Get existing Phase 5 validation rows": {"main": [[{"node": "Tag existing manual validation", "type": "main", "index": 0}]]},
+    "Tag existing manual validation": {"main": [[{"node": "Wait for candidate and manual rows", "type": "main", "index": 1}]]},
+    "Wait for candidate and manual rows": {"main": [[{"node": "Apply automated Phase 5 inputs", "type": "main", "index": 0}]]},
+    "Apply automated Phase 5 inputs": {"main": [[{"node": "Calculate evidence and economics status", "type": "main", "index": 0}]]},
+    "Calculate evidence and economics status": {"main": [[{"node": "Upsert Phase 5 validation rows", "type": "main", "index": 0}]]},
+    "Upsert Phase 5 validation rows": {"main": [[{"node": "Review Phase 5 results", "type": "main", "index": 0}]]}
+  },
+  "active": false,
+  "settings": {"executionOrder": "v1", "binaryMode": "separate", "availableInMCP": false},
+  "versionId": "e5f201b7-7c25-4d3e-9f5c-9e3d9a3a1b20",
+  "meta": {"templateCredsSetupCompleted": false},
+  "tags": []
+}

@@ -25,7 +25,8 @@ aliases: [Home, Dashboard, Tableau de bord]
 | [[Carte Theme]] | fichiers du thème, garde-fous, vérifications |
 | [[Carte Catalogue]] | pipeline en cinq étapes, règles DA, produits |
 | [[Carte Securite et CI]] | jetons, environnements, ce que la CI refuse |
-| [[Carte Fournisseurs et logistique]] | le volet dropshipping (autre dépôt, à fusionner) |
+| [[Carte Sourcing]] | recherche produit : n8n, prompts, audits ; collecteurs en privé |
+| [[Carte Fournisseurs et logistique]] | fournisseurs, délais, retours |
 | [[Carte Marketing]] | acquisition, contenu, infolettre |
 | [[Carte Legal et RGPD]] | pages obligatoires, consentement, en pause |
 
@@ -46,7 +47,8 @@ avancer sans qu'il le redemande : [[2026-09-08 Trois zones en pause]].
 
 ## Liens externes
 
-- Dépôt GitHub : https://github.com/dreyaaaaaaaaaaaaa/E-commerce (branche `main`)
+- Dépôt GitHub public : https://github.com/dreyaaaaaaaaaaaaa/E-Commerce-automating-workflow (branche `main`)
+- Dépôt GitHub privé (collecteurs) : https://github.com/dreyaaaaaaaaaaaaa/sourcing-collectors
 - Canvas Claude Design (maquettes) : https://claude.ai/code/artifact/0dbcff47-35f5-46b9-b864-805ac74279ea
 - Sources du canvas sur disque : `.design-canvas/` (hors Git)
 

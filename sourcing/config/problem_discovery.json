@@ -1,0 +1,93 @@
+{
+  "sources": {
+    "reddit": {
+      "enabled": true,
+      "strategy": "new",
+      "max_posts_per_subreddit": 50,
+      "categories": {
+        "cleaning": {
+          "enabled": true,
+          "subreddits": ["CleaningTips", "CleaningandTidying", "cleaning", "housekeeping", "laundry", "VacuumCleaners"]
+        },
+        "organization": {
+          "enabled": true,
+          "subreddits": ["organization", "organizing", "organized", "declutter", "decluttering", "UnfuckYourHabitat", "ICleanedMyRoom", "OrganizationPorn", "makeuporganization"]
+        },
+        "aesthetic_spaces": {
+          "enabled": true,
+          "subreddits": ["desksetup", "Workspaces", "battlestations", "DesignMyRoom", "femalelivingspace", "malelivingspace", "HomeDecorating", "DeskCableManagement"]
+        },
+        "home": {
+          "enabled": true,
+          "subreddits": ["Home", "Homeowners", "Apartmentliving", "ApartmentHacks", "HomeMaintenance", "HomeImprovement", "homemaking", "Frugal", "BuyItForLife"]
+        },
+        "small_spaces": {
+          "enabled": true,
+          "subreddits": ["smallspaces", "TinyHouses", "TinyHomes"]
+        },
+        "diy": {
+          "enabled": true,
+          "subreddits": ["DIY", "fixit", "Tools", "HowTo", "handyman"]
+        },
+        "pets": {
+          "enabled": true,
+          "subreddits": ["dogs", "DogAdvice", "cats", "CatAdvice", "Pets", "puppy101"]
+        },
+        "kitchen": {
+          "enabled": true,
+          "subreddits": ["Cooking", "AskCulinary", "MealPrepSunday", "MealPrep", "slowcooking", "Baking"]
+        },
+        "car": {
+          "enabled": true,
+          "subreddits": ["AutoDetailing", "CarCleaning"]
+        },
+        "travel": {
+          "enabled": true,
+          "subreddits": ["onebag", "TravelHacks", "solotravel", "HerOneBag"]
+        },
+        "family": {
+          "enabled": true,
+          "subreddits": ["Parenting", "Mommit", "daddit", "NewParents", "beyondthebump"]
+        }
+      }
+    }
+  },
+  "filters": {
+    "minimum_content_length": 50,
+    "max_age_days": 90,
+    "require_problem_signal": false,
+    "problem_signals": [
+      "how do i", "how can i", "does anyone know", "looking for",
+      "recommendation", "any suggestions", "is there a way", "can't",
+      "cannot", "difficult", "annoying", "frustrating", "hate",
+      "struggling", "problem", "solution"
+    ]
+  },
+  "prescoring": {
+    "enabled": true,
+    "minimum_score_for_ai": 35,
+    "weights": {
+      "problem_signal": 30,
+      "engagement": 20,
+      "comments": 15,
+      "recency": 20,
+      "content": 15
+    },
+    "thresholds": {
+      "engagement_score": 50,
+      "comments": 10,
+      "recent_days": 30,
+      "content_length": 300
+    }
+  },
+  "test_mode": {
+    "enabled": false,
+    "subreddits": ["CleaningTips", "organization"],
+    "max_posts_per_subreddit": 10
+  },
+  "safe_run": {
+    "max_posts_per_subreddit": 100,
+    "target_new_posts_per_subreddit": 10,
+    "community_delay_seconds": 5
+  }
+}

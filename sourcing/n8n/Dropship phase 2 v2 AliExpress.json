@@ -1,0 +1,362 @@
+{
+  "name": "Dropship phase 2 v2 - AliExpress Supplier Research",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-manual",
+      "name": "Manual test trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-980, 80]
+    },
+    {
+      "parameters": {"inputSource": "passthrough"},
+      "id": "trigger-subworkflow-phase2",
+      "name": "Run Phase 2 from orchestrator",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [-980, 180]
+    },
+    {
+      "parameters": {
+        "url": "={{ ($vars.ALIEXPRESS_API_BASE || 'http://host.docker.internal:8787') + '/health' }}",
+        "options": {"timeout": 10000}
+      },
+      "id": "health-aliexpress",
+      "name": "Check AliExpress API health",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [-870, 80]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/VOTRE_ID_GOOGLE_SHEET/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 227160725,
+          "mode": "list",
+          "cachedResultName": "Possible items"
+        },
+        "options": {}
+      },
+      "id": "get-new-opportunities",
+      "name": "Get Phase 1 opportunity rows",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [-760, 80]
+    },
+    {
+      "parameters": {
+        "jsCode": "const pending = new Set(['PHASE1_QUALIFIED', 'PHASE2_RETRY']);\nconst seen = new Set();\nconst output = [];\nconst now = Date.now();\nfor (const item of $input.all()) {\n  const status = String(item.json.status || '').trim().toUpperCase();\n  const productName = String(item.json.product_name || '').trim();\n  const query = String(item.json.search_query || '').trim().toLowerCase();\n  const opportunityId = String(item.json.opportunity_id || (item.json.source_id ? 'reddit:' + item.json.source_id : 'legacy:' + productName.toLowerCase() + '|' + query));\n  const nextRetry = Date.parse(String(item.json.phase2_next_retry_at || ''));\n  if (status === 'PHASE2_RETRY' && Number.isFinite(nextRetry) && nextRetry > now) continue;\n  let remaining = item.json.phase2_remaining_product_ids || [];\n  if (typeof remaining === 'string') { try { remaining = JSON.parse(remaining); } catch { remaining = []; } }\n  if (!Array.isArray(remaining)) remaining = [];\n  remaining = [...new Set(remaining.map(String).filter(id => /^\\d{10,}$/.test(id)))].slice(0, 10);\n  const key = `${opportunityId}|${query}`;\n  if (!pending.has(status) || !productName || !query || seen.has(key)) continue;\n  seen.add(key);\n  output.push({ json: { ...item.json, opportunity_id: opportunityId, source_phase1_status: status, search_query: query, resume_product_ids: remaining, phase2_retry_count: Number(item.json.phase2_retry_count || 0) } });\n}\nreturn output.slice(0, 10);"
+      },
+      "id": "limit-opportunities",
+      "name": "Select all pending accepted opportunities",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-540, 80]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {"caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 3},
+          "conditions": [{
+            "id": "resume-products-condition",
+            "leftValue": "={{ $json.resume_product_ids.length }}",
+            "rightValue": 0,
+            "operator": {"type": "number", "operation": "gt"}
+          }],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-resume-products",
+      "name": "Resume saved product IDs?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-430, 80]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($vars.ALIEXPRESS_API_BASE || 'http://host.docker.internal:8787') + '/search' }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ query: $json.search_query, country: 'FR', limit: 25, details: 0, headless: false, wait_seconds: 15, captcha_policy: 'keep_captured' }) }}",
+        "options": {
+        "timeout": 1200000
+        }
+      },
+      "id": "search-aliexpress",
+      "name": "Search AliExpress - visible Chrome",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [-320, 80]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((item, index) => {\n  const response = item.json;\n  const opportunity = $('Select all pending accepted opportunities').itemMatching(index).json;\n  const results = response.search?.results || [];\n  const queryTokens = new Set(String(opportunity.search_query || '').toLowerCase().split(/\\W+/).filter(token => token.length > 2));\n  const ranked = results.map(product => {\n    const titleTokens = new Set(String(product.title || '').toLowerCase().split(/\\W+/));\n    const overlap = [...queryTokens].filter(token => titleTokens.has(token)).length;\n    const relevance = queryTokens.size ? overlap / queryTokens.size : 0;\n    const rating = Number(product.rating || 0);\n    const reviews = Number(product.review_count || 0);\n    const orders = Number(product.orders_count || 0);\n    const score = relevance * 45 + Math.min(rating / 5, 1) * 15 + Math.min(Math.log10(reviews + 1) / 3, 1) * 10 + Math.min(Math.log10(orders + 1) / 4, 1) * 10 + (product.min_price != null ? 10 : 0) + (product.image ? 5 : 0) + (product.canonical_url || product.url ? 5 : 0);\n    return { ...product, deterministic_score: Math.round(score), query_overlap: overlap };\n  }).filter(product => product.product_id && product.title && product.query_overlap > 0).sort((a, b) => b.deterministic_score - a.deterministic_score).slice(0, 10);\n  return { json: { opportunity, search_run_id: response.search_run_id || null, search_status: response.status || 'error', search_error: response.error || null, search_warnings: response.search?.warnings || [], candidates: ranked, product_ids: ranked.map(product => product.product_id) }, pairedItem:{item:index} };\n});"
+      },
+      "id": "rank-candidates",
+      "name": "Rank candidates deterministically",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-100, 80]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "has-products-condition",
+              "leftValue": "={{ $json.product_ids.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-candidates",
+      "name": "Any candidates?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [120, 80]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($vars.ALIEXPRESS_API_BASE || 'http://host.docker.internal:8787') + '/scrape-batch' }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ products: $json.product_ids || $json.resume_product_ids, country: 'FR', headless: false, wait_seconds: 15, captcha_policy: 'wait', captcha_wait_seconds: 180, context: { opportunity_id: $json.opportunity?.opportunity_id || $json.opportunity_id, product_name: $json.opportunity?.product_name || $json.product_name, search_query: $json.opportunity?.search_query || $json.search_query, source_id: $json.opportunity?.source_id || $json.source_id || null, source_url: $json.opportunity?.source_url || $json.source_url || null, retry_count: $json.opportunity?.phase2_retry_count || $json.phase2_retry_count || 0, search_run_id: $json.search_run_id || $json.opportunity?.phase2_run_id || $json.phase2_run_id || null } }) }}",
+        "options": {
+          "timeout": 1200000
+        }
+      },
+      "id": "scrape-details",
+      "name": "Scrape top 10 product details",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [340, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {"caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 3},
+          "conditions": [
+            {
+              "id": "details-captured-condition",
+              "leftValue": "={{ $json.usable_count || 0 }}",
+              "rightValue": 0,
+              "operator": {"type": "number", "operation": "gt"}
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-details",
+      "name": "Any detailed snapshots?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [550, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const researchById = new Map($('Rank candidates deterministically').all().map(item => [String(item.json.opportunity?.opportunity_id || ''), item.json]));\nreturn $input.all().flatMap((item, index) => {\n  const response = item.json;\n  const context = response.context || {};\n  const opportunityId = String(context.opportunity_id || '');\n  if (!opportunityId) throw new Error('Missing opportunity_id in scrape context');\n  const research = researchById.get(opportunityId);\n  const scoreById = Object.fromEntries((research?.candidates || []).map(row => [String(row.product_id), row.deterministic_score]));\n  const output = [];\n  for (const result of response.results || []) {\n    const snapshot = result.snapshot;\n    const price = snapshot?.eligible_min_price ?? snapshot?.min_price;\n    const usable = snapshot?.product_id && snapshot?.title && snapshot?.currency === 'EUR' && snapshot?.destination_country === 'FR' && price != null && Number(snapshot?.eligible_variant_count || 0) > 0;\n    if (!usable) continue;\n    const cleanTitle = String(snapshot.title).replace(/\\s*-\\s*AliExpress(?:\\s+\\d+)?\\s*$/i, '').trim();\n    const evaluationKey = opportunityId + '|' + snapshot.product_id + '|FR';\n    output.push({ json: { opportunity_id: opportunityId, source_id: context.source_id || null, source_url: context.source_url || null, source_product: context.product_name, search_query: context.search_query, product_id: snapshot.product_id, destination_country: 'FR', evaluation_key: evaluationKey, phase2_search_run_id: context.search_run_id || null, title: cleanTitle, price, max_price: snapshot.eligible_max_price ?? snapshot.max_price, currency: snapshot.currency, source: 'AliExpress', link: snapshot.canonical_url || snapshot.requested_url, rating: snapshot.rating, review_count: snapshot.review_count, orders_count: snapshot.orders_count, supplier_name: snapshot.supplier?.name || null, supplier_feedback: snapshot.supplier?.positive_feedback ?? null, eligible_variant_count: snapshot.eligible_variant_count, deterministic_score: scoreById[String(snapshot.product_id)] ?? null, snapshot_status: snapshot.status, warnings: snapshot.warnings || [], status: 'RESEARCHED' }, pairedItem:{item:index} });\n  }\n  return output;\n});"
+      },
+      "id": "normalize-details",
+      "name": "Normalize detailed products",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [760, -80]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/VOTRE_ID_GOOGLE_SHEET/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1922860688,
+          "mode": "list",
+          "cachedResultName": "Found items online"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "product name": "={{ $json.source_product }}",
+            "search query": "={{ $json.search_query }}",
+            "title": "={{ $json.title }}",
+            "price": "={{ $json.price + ' ' + $json.currency }}",
+            "source": "AliExpress",
+            "link": "={{ $json.link }}",
+            "status": "RESEARCHED",
+            "opportunity_id": "={{ $json.opportunity_id }}",
+            "product_id": "={{ $json.product_id }}",
+            "destination_country": "={{ $json.destination_country }}",
+            "currency": "={{ $json.currency }}",
+            "evaluation_key": "={{ $json.evaluation_key }}",
+            "phase2_search_run_id": "={{ $json.phase2_search_run_id }}"
+          },
+          "matchingColumns": ["evaluation_key"],
+          "schema": [
+            {"id": "product name", "displayName": "product name", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "search query", "displayName": "search query", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "title", "displayName": "title", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "price", "displayName": "price", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "source", "displayName": "source", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "link", "displayName": "link", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "status", "displayName": "status", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "opportunity_id", "displayName": "opportunity_id", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "product_id", "displayName": "product_id", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "destination_country", "displayName": "destination_country", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "currency", "displayName": "currency", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "evaluation_key", "displayName": "evaluation_key", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "phase2_search_run_id", "displayName": "phase2_search_run_id", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true}
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "upsert-products",
+      "name": "Upsert AliExpress products by link",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [980, -80]
+    },
+    {
+      "parameters": {
+        "jsCode": "const writtenIds = new Set($('Normalize detailed products').all().map(item => String(item.json.opportunity_id || '')));\nreturn $('Scrape top 10 product details').all().flatMap(item => {\n  const scrape = item.json;\n  const context = scrape.context || {};\n  const opportunityId = String(context.opportunity_id || '');\n  if (!opportunityId || !writtenIds.has(opportunityId)) return [];\n  const remaining = Array.isArray(scrape.remaining_product_ids) ? [...new Set(scrape.remaining_product_ids.map(String))] : [];\n  const retryCount = Number(context.retry_count || 0) + (remaining.length ? 1 : 0);\n  const exhausted = retryCount >= 5;\n  const delayMinutes = Math.min(1440, 30 * Math.pow(2, Math.max(0, retryCount - 1)));\n  return [{json:{opportunity_id:opportunityId,search_query:context.search_query,product_name:context.product_name,status:remaining.length ? (exhausted ? 'PHASE2_FAILED' : 'PHASE2_RETRY') : 'PHASE2_RESEARCHED',phase2_remaining_product_ids:JSON.stringify(remaining),phase2_retry_count:retryCount,phase2_next_retry_at:remaining.length && !exhausted ? new Date(Date.now()+delayMinutes*60000).toISOString() : '',phase2_run_id:scrape.execution_id || context.search_run_id || '',phase2_error:scrape.error || ''}}];\n});"
+      },
+      "id": "prepare-researched-status",
+      "name": "Prepare PHASE2_RESEARCHED status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, -80]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const response = $json;\nconst opportunity = response.context || response.opportunity || {};\nconst effectiveStatus = String(response.status || response.search_status || 'error').toLowerCase();\nconst remaining = Array.isArray(response.remaining_product_ids) ? [...new Set(response.remaining_product_ids.map(String))] : [];\nconst retry = effectiveStatus === 'blocked' || effectiveStatus === 'error' || remaining.length > 0;\nconst retryCount = Number(opportunity.retry_count ?? opportunity.phase2_retry_count ?? 0) + (retry ? 1 : 0);\nconst exhausted = retryCount >= 5;\nconst delayMinutes = Math.min(1440, 30 * Math.pow(2, Math.max(0, retryCount - 1)));\nreturn {json:{opportunity_id:opportunity.opportunity_id,search_query:opportunity.search_query,product_name:opportunity.product_name,status:retry ? (exhausted ? 'PHASE2_FAILED' : 'PHASE2_RETRY') : 'PHASE2_NO_MATCH',phase2_remaining_product_ids:JSON.stringify(remaining),phase2_retry_count:retryCount,phase2_next_retry_at:retry && !exhausted ? new Date(Date.now()+delayMinutes*60000).toISOString() : '',phase2_run_id:response.execution_id || response.search_run_id || opportunity.search_run_id || '',phase2_error:response.error || response.search_error || null}};"
+      },
+      "id": "prepare-non-success-status",
+      "name": "Prepare retry or no-match status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [760, 180]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/VOTRE_ID_GOOGLE_SHEET/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 227160725,
+          "mode": "list",
+          "cachedResultName": "Possible items"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "product_name": "={{ $json.product_name }}",
+            "search_query": "={{ $json.search_query }}",
+            "status": "={{ $json.status }}",
+            "opportunity_id": "={{ $json.opportunity_id }}",
+            "phase2_remaining_product_ids": "={{ $json.phase2_remaining_product_ids }}",
+            "phase2_retry_count": "={{ $json.phase2_retry_count }}",
+            "phase2_next_retry_at": "={{ $json.phase2_next_retry_at }}",
+            "phase2_run_id": "={{ $json.phase2_run_id }}",
+            "phase2_error": "={{ $json.phase2_error }}"
+          },
+          "matchingColumns": ["opportunity_id", "search_query"],
+          "schema": [
+            {"id": "product_name", "displayName": "product_name", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "search_query", "displayName": "search_query", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "status", "displayName": "status", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "opportunity_id", "displayName": "opportunity_id", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "phase2_remaining_product_ids", "displayName": "phase2_remaining_product_ids", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "phase2_retry_count", "displayName": "phase2_retry_count", "required": false, "defaultMatch": false, "display": true, "type": "number", "canBeUsedToMatch": true},
+            {"id": "phase2_next_retry_at", "displayName": "phase2_next_retry_at", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "phase2_run_id", "displayName": "phase2_run_id", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "phase2_error", "displayName": "phase2_error", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true}
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "mark-opportunity-researched",
+      "name": "Update Phase 2 opportunity status",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [1430, 40]
+    },
+    {
+      "parameters": {
+        "content": "## Phase 2 multi-opportunity batch\n1. Restart: `python -m aliexpress_collector --country FR serve --host 127.0.0.1 --port 8787`.\n2. Configure the existing Google Sheets credential in all three Sheets nodes.\n3. Processes every pending Phase 1 acceptance; already `PHASE2_RESEARCHED` rows are skipped.\n4. For each opportunity, searches up to 25 listings and details the best 10.\n5. Only products with a real EUR price and a destination-eligible variant reach Sheets.\n6. If a CAPTCHA appears, solve it within three minutes. Incomplete opportunities become `PHASE2_RETRY`.\n7. Products are upserted by opportunity plus link; opportunity statuses are matched by product name. No AI tokens are used.",
+        "height": 330,
+        "width": 520,
+        "color": 5
+      },
+      "id": "setup-note",
+      "name": "Phase 2 multi-opportunity instructions",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-980, -300]
+    }
+  ],
+  "connections": {
+    "Manual test trigger": {"main": [[{"node": "Check AliExpress API health", "type": "main", "index": 0}]]},
+    "Run Phase 2 from orchestrator": {"main": [[{"node": "Check AliExpress API health", "type": "main", "index": 0}]]},
+    "Check AliExpress API health": {"main": [[{"node": "Get Phase 1 opportunity rows", "type": "main", "index": 0}]]},
+    "Get Phase 1 opportunity rows": {"main": [[{"node": "Select all pending accepted opportunities", "type": "main", "index": 0}]]},
+    "Select all pending accepted opportunities": {"main": [[{"node": "Resume saved product IDs?", "type": "main", "index": 0}]]},
+    "Resume saved product IDs?": {"main": [[{"node": "Scrape top 10 product details", "type": "main", "index": 0}], [{"node": "Search AliExpress - visible Chrome", "type": "main", "index": 0}]]},
+    "Search AliExpress - visible Chrome": {"main": [[{"node": "Rank candidates deterministically", "type": "main", "index": 0}]]},
+    "Rank candidates deterministically": {"main": [[{"node": "Any candidates?", "type": "main", "index": 0}]]},
+    "Any candidates?": {"main": [[{"node": "Scrape top 10 product details", "type": "main", "index": 0}], [{"node": "Prepare retry or no-match status", "type": "main", "index": 0}]]},
+    "Scrape top 10 product details": {"main": [[{"node": "Any detailed snapshots?", "type": "main", "index": 0}]]},
+    "Any detailed snapshots?": {"main": [[{"node": "Normalize detailed products", "type": "main", "index": 0}], [{"node": "Prepare retry or no-match status", "type": "main", "index": 0}]]},
+    "Normalize detailed products": {"main": [[{"node": "Upsert AliExpress products by link", "type": "main", "index": 0}]]},
+    "Upsert AliExpress products by link": {"main": [[{"node": "Prepare PHASE2_RESEARCHED status", "type": "main", "index": 0}]]},
+    "Prepare PHASE2_RESEARCHED status": {"main": [[{"node": "Update Phase 2 opportunity status", "type": "main", "index": 0}]]},
+    "Prepare retry or no-match status": {"main": [[{"node": "Update Phase 2 opportunity status", "type": "main", "index": 0}]]}
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "phase2-multi-opportunity-v1",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

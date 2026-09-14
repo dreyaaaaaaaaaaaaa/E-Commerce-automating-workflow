@@ -3,11 +3,15 @@
 ## Contexte du projet (a lire avant de toucher au perimetre)
 
 Ce sera a terme un site de **dropshipping automatise**. La partie
-fournisseur/automatisation (import produit, routage des commandes) vit
-dans un **autre depot**, pas celui-ci, et n'est pas encore fusionnee.
-Ne pas supposer qu'un flux d'approvisionnement existe ici : `ops/`
-est un pipeline generique d'ecriture catalogue (JSON local vers Shopify),
-pas une integration fournisseur.
+recherche / sourcing (workflows n8n, prompts, audits, guides) vit dans
+`sourcing/` depuis le 2026-09-14. **Le code des deux collecteurs Python**
+(Reddit, AliExpress, Playwright) est volontairement absent de ce depot
+public : il vit dans le depot prive `dreyaaaaaaaaaaaaa/sourcing-collectors`
+(copie locale : `C:\Users\lepis\Documents\ChatGPT\Site dropship`). Ne jamais
+le copier ici, meme partiellement, sans decision explicite du client.
+Ne pas supposer qu'un flux d'approvisionnement existe dans `ops/` : c'est un
+pipeline generique d'ecriture catalogue (JSON local vers Shopify), pas une
+integration fournisseur. Le routage des commandes n'existe nulle part encore.
 
 Trois points sont **volontairement en pause**, sur decision du client,
 pas par oubli. Ne pas les faire avancer sans qu'il le redemande :
@@ -53,6 +57,11 @@ Ce fichier est le point d'entree rapide. Lire dans cet ordre :
   afficher une simulation.
 - **Un produit arrive toujours en DRAFT.** La bascule en ligne est une etape
   separee (`publier.mjs`) qui publie le lot entier ou rien.
+- **`sourcing/` est une archive documentaire**, pas du code vivant de ce
+  depot : ses `.md` ont ete alignes sur la regle du tiret cadratin, ses
+  exports n8n (`.json`) et scripts `.cjs` sont a garder tels quels. Toute
+  correction de workflow se fait dans n8n puis se re-exporte ici, avec l'ID
+  Google Sheet remplace par `VOTRE_ID_GOOGLE_SHEET` avant commit.
 - **Pas de dependance npm dans `ops/`.** Le pipeline tourne avec `fetch`,
   `fs` et le parseur JSON natif de Node uniquement. Une dependance
   supplementaire est une surface d'attaque de plus dans un job qui a le

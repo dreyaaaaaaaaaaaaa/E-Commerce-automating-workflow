@@ -5,7 +5,8 @@ tags: [ressource]
 # Liens utiles
 
 ## Le projet
-- Dépôt GitHub : https://github.com/dreyaaaaaaaaaaaaa/E-commerce
+- Dépôt GitHub public : https://github.com/dreyaaaaaaaaaaaaa/E-Commerce-automating-workflow
+- Dépôt GitHub privé, collecteurs : https://github.com/dreyaaaaaaaaaaaaa/sourcing-collectors
 - Canvas Claude Design (maquettes) : https://claude.ai/code/artifact/0dbcff47-35f5-46b9-b864-805ac74279ea
 
 ## Shopify
